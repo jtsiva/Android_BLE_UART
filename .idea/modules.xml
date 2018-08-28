@@ -2,9 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/Adafruit_BLE_UART.iml" filepath="$PROJECT_DIR$/Adafruit_BLE_UART.iml" />
-      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Android_BLE_UART.iml" filepath="$PROJECT_DIR$/Android_BLE_UART.iml" />
     </modules>
   </component>
 </project>
-
