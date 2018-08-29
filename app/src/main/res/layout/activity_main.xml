@@ -39,12 +39,21 @@
         android:gravity="bottom"/>
 
     <CheckBox
+        android:id="@+id/newline"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Insert NewLine on Send"
-        android:id="@+id/newline"
+        android:layout_alignEnd="@+id/scrollView"
         android:layout_alignParentBottom="true"
         android:layout_alignParentStart="true"
-        android:layout_alignEnd="@+id/scrollView" />
+        android:text="Append NewLine" />
+
+    <Switch
+        android:id="@+id/role"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignTop="@+id/newline"
+        android:layout_marginEnd="0dp"
+        android:text="Periph" />
 
 </RelativeLayout>

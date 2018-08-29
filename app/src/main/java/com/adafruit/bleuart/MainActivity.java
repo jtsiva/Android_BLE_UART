@@ -12,6 +12,8 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.CompoundButton;
+import android.widget.Switch;
 
 import java.lang.Thread;
 
@@ -22,6 +24,7 @@ public class MainActivity extends Activity implements BluetoothLeUart.Callback {
     private EditText input;
     private Button   send;
     private CheckBox newline;
+    private Switch   role;
 
     // Bluetooth LE UART instance.  This is defined in BluetoothLeUart.java.
     private BluetoothLeUart uart;
@@ -78,6 +81,20 @@ public class MainActivity extends Activity implements BluetoothLeUart.Callback {
         // Grab references to UI elements.
         messages = (TextView) findViewById(R.id.messages);
         input = (EditText) findViewById(R.id.input);
+
+        role = (Switch) findViewById(R.id.role);
+        role.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    //we are a peripheral!
+                    writeLine("We are a peripheral!");
+                }
+                else {
+                    //we are central!
+                    writeLine("We are a central!");
+                }
+            }
+        });
 
         // Initialize UART.
         uart = new BluetoothLeUart(getApplicationContext());
