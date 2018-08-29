@@ -11,6 +11,8 @@ import android.content.Context;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
@@ -19,7 +21,9 @@ import java.util.WeakHashMap;
 import java.lang.String;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothAdapter.LeScanCallback {
+import android.util.Log;
+
+public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothAdapter.LeScanCallback, UartBase {
 
     // UUIDs for UART service and associated characteristics.
     public static UUID UART_UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
@@ -38,7 +42,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
 
     // Internal UART state.
     private Context context;
-    private WeakHashMap<Callback, Object> callbacks;
+    private Set<UartBase.HostCallback> callbacks = new HashSet();
     private BluetoothAdapter adapter;
     private BluetoothGatt gatt;
     private BluetoothGattCharacteristic tx;
@@ -56,20 +60,9 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     // Queues for characteristic read (synchronous)
     private Queue<BluetoothGattCharacteristic> readQueue;
 
-    // Interface for a BluetoothLeUart client to be notified of UART actions.
-    public interface Callback {
-        public void onConnected(BluetoothLeUart uart);
-        public void onConnectFailed(BluetoothLeUart uart);
-        public void onDisconnected(BluetoothLeUart uart);
-        public void onReceive(BluetoothLeUart uart, BluetoothGattCharacteristic rx);
-        public void onDeviceFound(BluetoothDevice device);
-        public void onDeviceInfoAvailable();
-    }
-
     public BluetoothLeUart(Context context) {
         super();
         this.context = context;
-        this.callbacks = new WeakHashMap<Callback, Object>();
         this.adapter = BluetoothAdapter.getDefaultAdapter();
         this.gatt = null;
         this.tx = null;
@@ -130,12 +123,12 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     }
 
     // Register the specified callback to receive UART callbacks.
-    public void registerCallback(Callback callback) {
-        callbacks.put(callback, null);
+    public void registerCallback(UartBase.HostCallback callback) {
+        callbacks.put(callback);
     }
 
     // Unregister the specified callback.
-    public void unregisterCallback(Callback callback) {
+    public void unregisterCallback(UartBase.HostCallback callback) {
         callbacks.remove(callback);
     }
 
@@ -315,7 +308,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
 
     // Private functions to simplify the notification of all callbacks of a certain event.
     private void notifyOnConnected(BluetoothLeUart uart) {
-        for (Callback cb : callbacks.keySet()) {
+        for (UartBase.HostCallback cb : callbacks) {
             if (cb != null) {
                 cb.onConnected(uart);
             }
@@ -323,7 +316,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     }
 
     private void notifyOnConnectFailed(BluetoothLeUart uart) {
-        for (Callback cb : callbacks.keySet()) {
+        for (UartBase.HostCallback cb : callbacks) {
             if (cb != null) {
                 cb.onConnectFailed(uart);
             }
@@ -331,7 +324,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     }
 
     private void notifyOnDisconnected(BluetoothLeUart uart) {
-        for (Callback cb : callbacks.keySet()) {
+        for (UartBase.HostCallback cb : callbacks) {
             if (cb != null) {
                 cb.onDisconnected(uart);
             }
@@ -339,7 +332,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     }
 
     private void notifyOnReceive(BluetoothLeUart uart, BluetoothGattCharacteristic rx) {
-        for (Callback cb : callbacks.keySet()) {
+        for (UartBase.HostCallback cb : callbacks) {
             if (cb != null ) {
                 cb.onReceive(uart, rx);
             }
@@ -347,7 +340,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     }
 
     private void notifyOnDeviceFound(BluetoothDevice device) {
-        for (Callback cb : callbacks.keySet()) {
+        for (UartBase.HostCallback cb : callbacks) {
             if (cb != null) {
                 cb.onDeviceFound(device);
             }
@@ -355,7 +348,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     }
 
     private void notifyOnDeviceInfoAvailable() {
-        for (Callback cb : callbacks.keySet()) {
+        for (UartBase.HostCallback cb : callbacks) {
             if (cb != null) {
                 cb.onDeviceInfoAvailable();
             }

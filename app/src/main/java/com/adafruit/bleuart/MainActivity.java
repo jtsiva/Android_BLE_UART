@@ -17,7 +17,7 @@ import android.widget.Switch;
 
 import java.lang.Thread;
 
-public class MainActivity extends Activity implements BluetoothLeUart.Callback {
+public class MainActivity extends Activity implements UartBase.HostCallback {
 
     // UI elements
     private TextView messages;
@@ -147,7 +147,7 @@ public class MainActivity extends Activity implements BluetoothLeUart.Callback {
 
     // UART Callback event handlers.
     @Override
-    public void onConnected(BluetoothLeUart uart) {
+    public void onConnected(UartBase uart) {
         // Called when UART device is connected and ready to send/receive data.
         writeLine("Connected!");
         // Enable the send button
@@ -162,7 +162,7 @@ public class MainActivity extends Activity implements BluetoothLeUart.Callback {
     }
 
     @Override
-    public void onConnectFailed(BluetoothLeUart uart) {
+    public void onConnectFailed(UartBase uart) {
         // Called when some error occured which prevented UART connection from completing.
         writeLine("Error connecting to device!");
         runOnUiThread(new Runnable() {
@@ -176,7 +176,7 @@ public class MainActivity extends Activity implements BluetoothLeUart.Callback {
     }
 
     @Override
-    public void onDisconnected(BluetoothLeUart uart) {
+    public void onDisconnected(UartBase uart) {
         // Called when the UART device disconnected.
         writeLine("Disconnected!");
         // Disable the send button.
@@ -191,7 +191,7 @@ public class MainActivity extends Activity implements BluetoothLeUart.Callback {
     }
 
     @Override
-    public void onReceive(BluetoothLeUart uart, BluetoothGattCharacteristic rx) {
+    public void onReceive(UartBase uart, BluetoothGattCharacteristic rx) {
         // Called when data is received by the UART.
         writeLine("Received: " + rx.getStringValue(0));
     }
