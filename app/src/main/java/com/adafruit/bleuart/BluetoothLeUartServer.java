@@ -86,7 +86,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         mGattServer = mBluetoothManager.openGattServer(context,this);
 
         //add the service to the gatt server
-        mGattServer.addService(createService());
+        mGattServer.addService(createUartService());
 
     }
 
@@ -156,7 +156,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         }
     }
 
-    private BluetoothGattService createService() {
+    private BluetoothGattService createUartService() {
         //give our service it's UUID and set it to be primary
         BluetoothGattService service = new BluetoothGattService(UART_UUID, SERVICE_TYPE_PRIMARY);
 
@@ -185,6 +185,17 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         return service;
     }
 
+    private BluetoothGattService createDevInfoService () {
+        BluetoothGattService service = new BluetoothGattService(DIS_UUID, SERVICE_TYPE_SECONDARY);
+        BluetoothGattCharacteristic manuf = new BluetoothGattCharacteristic(DIS_MANUF_UUID,
+                                                BluetoothGattCharacteristic.PROPERTY_READ,
+                                                BluetoothGattCharacteristic.PERMISSION_READ);
+        manuf.setValue("---");
+        service.addCharacteristic(manuf);
+        
+        return service
+}
+
     public void startLeAdvertising(){ // without adv payload
         AdvertiseSettings settings = new AdvertiseSettings.Builder()
                 .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY) //3 modes: LOW_POWER, BALANCED, LOW_LATENCY
@@ -195,7 +206,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
         //set of the advertising data to advertise the service!
         AdvertiseData data = new AdvertiseData.Builder()
-                .setIncludeDeviceName(true)
+                .setIncludeDeviceName(false)
                 .setIncludeTxPowerLevel(false)
                 .addServiceUuid(new ParcelUuid(UART_UUID))
                 .build();
@@ -230,6 +241,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         if (status == BluetoothGatt.GATT_SUCCESS){
             switch (newState) {
                 case BluetoothGatt.STATE_CONNECTED:
+                    Log.i(INFO_TAG, "Connected to: " + device);
                    // bleHandler.obtainMessage(MSG_CONNECTED, device).sendToTarget();
                     break;
 
@@ -275,6 +287,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     //this doesn't need to be done per characteristic
     @Override
     public void onDescriptorWriteRequest(BluetoothDevice device, int requestId, BluetoothGattDescriptor descriptor, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
+        Log.i(INFO_TAG, device + " registering");
         if (CLIENT_UUID.equals(descriptor.getUuid())) {
             if (Arrays.equals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE, value)) {
                 mRegisteredDevices.add(device);

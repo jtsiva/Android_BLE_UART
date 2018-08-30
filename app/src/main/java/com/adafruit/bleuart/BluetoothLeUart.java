@@ -215,10 +215,12 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
         rx = gatt.getService(UART_UUID).getCharacteristic(RX_UUID);
 
         // Save reference to each DIS characteristic.
-        disManuf = gatt.getService(DIS_UUID).getCharacteristic(DIS_MANUF_UUID);
-        disModel = gatt.getService(DIS_UUID).getCharacteristic(DIS_MODEL_UUID);
-        disHWRev = gatt.getService(DIS_UUID).getCharacteristic(DIS_HWREV_UUID);
-        disSWRev = gatt.getService(DIS_UUID).getCharacteristic(DIS_SWREV_UUID);
+        if (gatt.getService(DIS_UUID)) {
+            disManuf = gatt.getService(DIS_UUID).getCharacteristic(DIS_MANUF_UUID);
+            disModel = gatt.getService(DIS_UUID).getCharacteristic(DIS_MODEL_UUID);
+            disHWRev = gatt.getService(DIS_UUID).getCharacteristic(DIS_HWREV_UUID);
+            disSWRev = gatt.getService(DIS_UUID).getCharacteristic(DIS_SWREV_UUID);
+        }
 
         // Add device information characteristics to the read queue
         // These need to be queued because we have to wait for the response to the first
@@ -310,7 +312,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
             // Prevent connections to future found devices.
             connectFirst = false;
             // Connect to device.
-            gatt = device.connectGatt(context, true, this);
+            gatt = device.connectGatt(context, false, this, BluetoothDevice.TRANSPORT_LE);
         }
     }
 
