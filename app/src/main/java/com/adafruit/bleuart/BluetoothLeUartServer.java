@@ -15,6 +15,7 @@ import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.content.Context;
+import android.os.ParcelUuid;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -22,14 +23,18 @@ import java.nio.charset.Charset;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Queue;
 import java.util.UUID;
 import java.util.WeakHashMap;
 
 import android.util.Log;
+import static android.bluetooth.BluetoothGattService.SERVICE_TYPE_PRIMARY;
 
-class BluetoothLeUartServer extends BluetoothGattServerCallback implements AdvertiseCallback, UartBase{
+class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartBase{
+    private static final String ERR_TAG = "FATAL ERROR";
+    private static final String INFO_TAG = "APP_INFO";
 
     // UUIDs for UART service and associated characteristics.
     public static UUID UART_UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
@@ -48,7 +53,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements Adver
 
     // Internal UART state.
     private Context context;
-    private Set<UartBase.HostCallback> callbacks = new HashSet();
+    private WeakHashMap<UartBase.HostCallback, Object> callbacks = new WeakHashMap<UartBase.HostCallback, Object>();
     private BluetoothAdapter adapter;
     private BluetoothGatt gatt;
     private BluetoothGattServer mGattServer;
@@ -83,12 +88,22 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements Adver
         //add the service to the gatt server
         mGattServer.addService(createService());
 
+    }
+
+    public void start(){
         startLeAdvertising();
+    }
+
+    public void disconnect() {
+        //do nothing
+    }
+    public void stop(){
+
     }
 
     // Register the specified callback to receive UART callbacks.
     public void registerCallback(UartBase.HostCallback callback) {
-        callbacks.put(callback);
+        callbacks.put(callback, null);
     }
 
     // Unregister the specified callback.
@@ -193,19 +208,17 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements Adver
         }
 
         //start advertising
-        mBluetoothLeAdvertiser.startAdvertising(settings, data, this);
-    }
+        mBluetoothLeAdvertiser.startAdvertising(settings, data, new AdvertiseCallback (){
+            @Override
+            public void onStartSuccess(AdvertiseSettings settingsInEffect) {
+                Log.i(INFO_TAG, "LE Advertise Started");
+            }
 
-    //Advertising Callbacks!
-
-    @Override
-    public void onStartSuccess(AdvertiseSettings settingsInEffect) {
-        Log.i(INFO_TAG, "LE Advertise Started");
-    }
-
-    @Override
-    public void onStartFailure(int errorCode) {
-        Log.e(ERR_TAG, "LE Advertise Failed: " + errorCode);
+            @Override
+            public void onStartFailure(int errorCode) {
+                Log.e(ERR_TAG, "LE Advertise Failed: " + errorCode);
+            }
+        });
     }
 
     //GATT server callbacks
@@ -238,7 +251,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements Adver
                                              byte[] value) {
         super.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite,
                 responseNeeded, offset, value);
-        Log.i(TAG, "onCharacteristicWriteRequest " + characteristic.getUuid().toString());
+        Log.i("", "onCharacteristicWriteRequest " + characteristic.getUuid().toString());
 
         //handle long writes?
         //handle different receive queues
@@ -297,7 +310,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements Adver
 
     // Private functions to simplify the notification of all callbacks of a certain event.
     private void notifyOnConnected(BluetoothLeUartServer uart) {
-        for (UartBase.HostCallback cb : callbacks) {
+        for (UartBase.HostCallback cb : callbacks.keySet()) {
             if (cb != null) {
                 cb.onConnected(uart);
             }
@@ -305,7 +318,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements Adver
     }
 
     private void notifyOnConnectFailed(BluetoothLeUartServer uart) {
-        for (UartBase.HostCallback cb : callbacks) {
+        for (UartBase.HostCallback cb : callbacks.keySet()) {
             if (cb != null) {
                 cb.onConnectFailed(uart);
             }
@@ -313,7 +326,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements Adver
     }
 
     private void notifyOnDisconnected(BluetoothLeUartServer uart) {
-        for (UartBase.HostCallback cb : callbacks) {
+        for (UartBase.HostCallback cb : callbacks.keySet()) {
             if (cb != null) {
                 cb.onDisconnected(uart);
             }
@@ -321,7 +334,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements Adver
     }
 
     private void notifyOnReceive(BluetoothLeUartServer uart, BluetoothGattCharacteristic characteristic) {
-        for (UartBase.HostCallback cb : callbacks) {
+        for (UartBase.HostCallback cb : callbacks.keySet()) {
             if (cb != null ) {
                 cb.onReceive(uart, characteristic);
             }
@@ -329,7 +342,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements Adver
     }
 
     private void notifyOnDeviceFound(BluetoothDevice device) {
-        for (UartBase.HostCallback cb : callbacks) {
+        for (UartBase.HostCallback cb : callbacks.keySet()) {
             if (cb != null) {
                 cb.onDeviceFound(device);
             }
@@ -337,7 +350,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements Adver
     }
 
     private void notifyOnDeviceInfoAvailable() {
-        for (UartBase.HostCallback cb : callbacks) {
+        for (UartBase.HostCallback cb : callbacks.keySet()) {
             if (cb != null) {
                 cb.onDeviceInfoAvailable();
             }

@@ -14,6 +14,11 @@ public interface UartBase {
         public void onDeviceInfoAvailable();
     }
 
+    public void registerCallback(UartBase.HostCallback callback);
+    public void unregisterCallback(UartBase.HostCallback callback);
+    public void start();
+    public void disconnect();
+    public void stop();
     public String getDeviceInfo();
     public void send(byte[] data);
     public void send(String data);

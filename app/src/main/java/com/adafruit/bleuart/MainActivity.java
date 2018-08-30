@@ -27,7 +27,7 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
     private Switch   role;
 
     // Bluetooth LE UART instance.  This is defined in BluetoothLeUart.java.
-    private BluetoothLeUart uart;
+    private UartBase uart;
 
     // Write some text to the messages text view.
     // Care is taken to do this on the main UI thread so writeLine can be called from any thread
@@ -82,22 +82,23 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
         messages = (TextView) findViewById(R.id.messages);
         input = (EditText) findViewById(R.id.input);
 
-        role = (Switch) findViewById(R.id.role);
-        role.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if (isChecked) {
-                    //we are a peripheral!
-                    writeLine("We are a peripheral!");
-                }
-                else {
-                    //we are central!
-                    writeLine("We are a central!");
-                }
-            }
-        });
+        Bundle receiveBundle = this.getIntent().getExtras();
+        final int role = receiveBundle.getInt("role");
 
-        // Initialize UART.
-        uart = new BluetoothLeUart(getApplicationContext());
+        switch(role) {
+            case RoleChooser.CENTRAL:
+                writeLine("I am a central!");
+                uart = new BluetoothLeUart(getApplicationContext());
+                break;
+            case RoleChooser.PERIPHERAL:
+                writeLine("I am a peripheral!");
+                uart = new BluetoothLeUartServer(getApplicationContext());
+                break;
+            case RoleChooser.BRIDGE:
+                break;
+            case RoleChooser.AUTO:
+                break;
+        }
 
         // Disable the send button until we're connected.
         send = (Button)findViewById(R.id.send);
@@ -122,7 +123,7 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
         super.onResume();
         writeLine("Scanning for devices ...");
         uart.registerCallback(this);
-        uart.connectFirstAvailable();
+        uart.start();
     }
 
     // OnStop, called right before the activity loses foreground focus.  Close the BTLE connection.
