@@ -225,21 +225,23 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
             disModel = gatt.getService(DIS_UUID).getCharacteristic(DIS_MODEL_UUID);
             disHWRev = gatt.getService(DIS_UUID).getCharacteristic(DIS_HWREV_UUID);
             disSWRev = gatt.getService(DIS_UUID).getCharacteristic(DIS_SWREV_UUID);
+
+            // Add device information characteristics to the read queue
+            // These need to be queued because we have to wait for the response to the first
+            // read request before a second one can be processed (which makes you wonder why they
+            // implemented this with async logic to begin with???)
+            readQueue.offer(disManuf);
+            readQueue.offer(disModel);
+            readQueue.offer(disHWRev);
+            readQueue.offer(disSWRev);
+
+            // Request a dummy read to get the device information queue going
+            gatt.readCharacteristic(disModel);
         } else {
             Log.w("Central", "null service!");
         }
 
-        // Add device information characteristics to the read queue
-        // These need to be queued because we have to wait for the response to the first
-        // read request before a second one can be processed (which makes you wonder why they
-        // implemented this with async logic to begin with???)
-        readQueue.offer(disManuf);
-        readQueue.offer(disModel);
-        readQueue.offer(disHWRev);
-        readQueue.offer(disSWRev);
 
-        // Request a dummy read to get the device information queue going
-        gatt.readCharacteristic(disModel);
 
         // Setup notifications on RX characteristic changes (i.e. data received).
         // First call setCharacteristicNotification to enable notification.
@@ -312,7 +314,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
         super.onCharacteristicWrite(gatt, characteristic, status);
 
         if (status == BluetoothGatt.GATT_SUCCESS) {
-            // Log.d(TAG,"Characteristic write successful");
+            Log.d("BlueNet","Characteristic write successful");
         }
         writeInProgress = false;
     }
@@ -380,7 +382,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     private void notifyOnDeviceInfoAvailable() {
         for (UartBase.HostCallback cb : callbacks.keySet()) {
             if (cb != null) {
-                cb.onDeviceInfoAvailable();
+                //cb.onDeviceInfoAvailable();
             }
         }
     }
