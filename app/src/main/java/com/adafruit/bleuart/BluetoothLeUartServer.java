@@ -31,6 +31,7 @@ import java.util.WeakHashMap;
 
 import android.util.Log;
 import static android.bluetooth.BluetoothGattService.SERVICE_TYPE_PRIMARY;
+import static android.bluetooth.BluetoothGattService.SERVICE_TYPE_SECONDARY;
 
 class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartBase{
     private static final String ERR_TAG = "FATAL ERROR";
@@ -87,7 +88,6 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
         //add the service to the gatt server
         mGattServer.addService(createUartService());
-
     }
 
     public void start(){
@@ -186,14 +186,43 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     }
 
     private BluetoothGattService createDevInfoService () {
-        BluetoothGattService service = new BluetoothGattService(DIS_UUID, SERVICE_TYPE_SECONDARY);
+        BluetoothGattService service = new BluetoothGattService(DIS_UUID, SERVICE_TYPE_PRIMARY);
         BluetoothGattCharacteristic manuf = new BluetoothGattCharacteristic(DIS_MANUF_UUID,
                                                 BluetoothGattCharacteristic.PROPERTY_READ,
                                                 BluetoothGattCharacteristic.PERMISSION_READ);
-        manuf.setValue("---");
+        manuf.setValue("---".getBytes(Charset.forName("UTF-8")));
         service.addCharacteristic(manuf);
-        
-        return service
+        if (null == service) {
+            Log.w("", "null service 1!");
+}
+        BluetoothGattCharacteristic model = new BluetoothGattCharacteristic(DIS_MODEL_UUID,
+                                                BluetoothGattCharacteristic.PROPERTY_READ,
+                                                BluetoothGattCharacteristic.PERMISSION_READ);
+        model.setValue("---".getBytes(Charset.forName("UTF-8")));
+        service.addCharacteristic(model);
+                if (null == service) {
+            Log.w("", "null service 2!");
+}
+
+        BluetoothGattCharacteristic hwrev = new BluetoothGattCharacteristic(DIS_HWREV_UUID,
+                                                BluetoothGattCharacteristic.PROPERTY_READ,
+                                                BluetoothGattCharacteristic.PERMISSION_READ);
+        hwrev.setValue("---".getBytes(Charset.forName("UTF-8")));
+        service.addCharacteristic(hwrev);
+                if (null == service) {
+            Log.w("", "null service 3!");
+}
+
+        BluetoothGattCharacteristic swrev = new BluetoothGattCharacteristic(DIS_SWREV_UUID,
+                                                BluetoothGattCharacteristic.PROPERTY_READ,
+                                                BluetoothGattCharacteristic.PERMISSION_READ);
+        swrev.setValue("---".getBytes(Charset.forName("UTF-8")));
+        service.addCharacteristic(swrev);
+                if (null == service) {
+            Log.w("", "null service 4!");
+}
+
+        return service;
 }
 
     public void startLeAdvertising(){ // without adv payload
@@ -223,6 +252,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
             @Override
             public void onStartSuccess(AdvertiseSettings settingsInEffect) {
                 Log.i(INFO_TAG, "LE Advertise Started");
+                mGattServer.addService(createDevInfoService());
             }
 
             @Override

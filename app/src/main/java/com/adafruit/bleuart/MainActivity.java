@@ -88,10 +88,12 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
         switch(role) {
             case RoleChooser.CENTRAL:
                 writeLine("I am a central!");
+                writeLine("Scanning for devices ...");
                 uart = new BluetoothLeUart(getApplicationContext());
                 break;
             case RoleChooser.PERIPHERAL:
                 writeLine("I am a peripheral!");
+                writeLine("Advertising device ...");
                 uart = new BluetoothLeUartServer(getApplicationContext());
                 break;
             case RoleChooser.BRIDGE:
@@ -121,7 +123,6 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
     @Override
     protected void onResume() {
         super.onResume();
-        writeLine("Scanning for devices ...");
         uart.registerCallback(this);
         uart.start();
     }
