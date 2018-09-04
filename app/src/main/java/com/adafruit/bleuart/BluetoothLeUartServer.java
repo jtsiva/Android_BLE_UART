@@ -201,7 +201,17 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         //do nothing
     }
     public void stop(){
+        mBluetoothLeAdvertiser.stopAdvertising(new AdvertiseCallback (){
+            @Override
+            public void onStartSuccess(AdvertiseSettings settingsInEffect) {
+                Log.i(INFO_TAG, "LE Advertise Started");
+            }
 
+            @Override
+            public void onStartFailure(int errorCode) {
+                Log.e(ERR_TAG, "LE Advertise Failed: " + errorCode);
+            }
+        });
     }
 
     // Register the specified callback to receive UART callbacks.

@@ -46,6 +46,7 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
     public void sendClick(View view) {
         StringBuilder stringBuilder = new StringBuilder();
         String message = input.getText().toString();
+        input.setText("");
 
         // We can only send 20 bytes per packet, so break longer messages
         // up into 20 byte payloads
@@ -71,6 +72,11 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
             stringBuilder.append("\n");
             uart.send(stringBuilder.toString());
         }
+    }
+
+    public void restartClick(View view) {
+        uart.stop();
+        uart.start();
     }
 
     @Override
