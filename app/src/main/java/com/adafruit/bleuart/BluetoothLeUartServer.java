@@ -254,8 +254,8 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
                                              byte[] value) {
         super.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite,
                 responseNeeded, offset, value);
-        Log.i("", "onCharacteristicWriteRequest " + characteristic.getUuid().toString());
-
+        Log.i("Peripheral", "onCharacteristicWriteRequest " + characteristic.getUuid().toString());
+        Log.i("Peripheral", new String(value));
         //handle long writes?
         //handle different receive queues
         notifyOnReceive(this, characteristic);
