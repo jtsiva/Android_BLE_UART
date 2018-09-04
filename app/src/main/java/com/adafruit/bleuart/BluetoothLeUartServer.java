@@ -368,7 +368,9 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         //handle different receive queues
         characteristic.setValue(value);
         notifyOnReceive(this, characteristic);
-
+        if (responseNeeded) {
+            mGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
+        }
     }
 
     //Handle read requests to the read  characteristic. Can handle long reads
