@@ -28,12 +28,19 @@ import java.util.List;
 import java.util.Queue;
 import java.util.UUID;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Looper;
+import android.os.Message;
+import android.support.annotation.MainThread;
 
 import android.util.Log;
 import static android.bluetooth.BluetoothGattService.SERVICE_TYPE_PRIMARY;
 import static android.bluetooth.BluetoothGattService.SERVICE_TYPE_SECONDARY;
 
-class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartBase{
+class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartBase,Handler.Callback{
     private static final String ERR_TAG = "FATAL ERROR";
     private static final String INFO_TAG = "APP_INFO";
 
@@ -52,6 +59,17 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     public static UUID DIS_HWREV_UUID = UUID.fromString("00002a26-0000-1000-8000-00805f9b34fb");
     public static UUID DIS_SWREV_UUID = UUID.fromString("00002a28-0000-1000-8000-00805f9b34fb");
 
+    //MSG IDs
+    private static final int MSG_CONNECT = 10;
+    private static final int MSG_CONNECTED = 20;
+    private static final int MSG_DISCONNECT = 30;
+    private static final int MSG_DISCONNECTED = 40;
+    private static final int MSG_NOTIFY = 50;
+    private static final int MSG_NOTIFIED = 60;
+    private static final int MSG_WRITE = 70;
+    private static final int MSG_REGISTER = 80;
+    private static final int MSG_REGISTERED = 90;
+
     // Internal UART state.
     private Context context;
     private WeakHashMap<UartBase.HostCallback, Object> callbacks = new WeakHashMap<UartBase.HostCallback, Object>();
@@ -63,7 +81,6 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     private Set<BluetoothDevice> mRegisteredDevices = new HashSet();
     private BluetoothGattCharacteristic tx;
     private BluetoothGattCharacteristic rx;
-    private boolean writeInProgress; // Flag to indicate a write is currently in progress
 
     // Device Information state.
     private BluetoothGattCharacteristic disManuf;
@@ -72,9 +89,59 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     private BluetoothGattCharacteristic disSWRev;
     private boolean disAvailable;
 
-    // Queues for characteristic read (synchronous)
-    private Queue<BluetoothGattCharacteristic> readQueue;
+    // Queues for characteristic write (synchronous)
+    private Queue<WriteData> writeQueue = new ConcurrentLinkedQueue<WriteData>();
+    private boolean idle = true;
 
+    //Handler for working with BT ops
+    private Handler bleHandler;
+
+    public class WriteData {
+        public BluetoothDevice device;
+        byte [] data;
+
+        public WriteData (BluetoothDevice device, byte [] data) {
+            this.device = device;
+            this.data = data;
+        }
+    }
+
+    //Classes used to wrap up message handler data
+    public class WriteRequest {
+        public BluetoothDevice device;
+        public int requestId;
+        public int offset;
+        public BluetoothGattCharacteristic characteristic;
+
+        public WriteRequest(BluetoothDevice device,
+                           int requestId, int offset, BluetoothGattCharacteristic characteristic) {
+            this.device = device;
+            this.requestId = requestId;
+            this.offset = offset;
+            this.characteristic = characteristic;
+        }
+    }
+
+    public class RegRequest {
+        public BluetoothDevice device;
+        public int requestId;
+        public BluetoothGattDescriptor descriptor;
+        public boolean preparedWrite;
+        public boolean responseNeeded;
+        public int offset;
+        public byte[] value;
+
+        public RegRequest(BluetoothDevice device, int requestId, BluetoothGattDescriptor descriptor,
+                          boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
+            this.device = device;
+            this.requestId = requestId;
+            this.descriptor = descriptor;
+            this.preparedWrite = preparedWrite;
+            this.responseNeeded = responseNeeded;
+            this.offset = offset;
+            this.value = value;
+        }
+    }
 
     public BluetoothLeUartServer(Context context) {
         this.context = context;
@@ -83,11 +150,47 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
                 (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
         mBluetoothAdapter = mBluetoothManager.getAdapter();
 
+        HandlerThread handlerThread = new HandlerThread("BleThread");
+        handlerThread.start();
+        bleHandler = new Handler(handlerThread.getLooper(), this);
+
         //create the gatt server
         mGattServer = mBluetoothManager.openGattServer(context,this);
 
         //add the service to the gatt server
         mGattServer.addService(createUartService());
+    }
+
+    @Override
+    public boolean handleMessage(Message message) {
+        switch (message.what) {
+            case MSG_CONNECT:
+
+                break;
+            case MSG_CONNECTED:
+                //doConnected((BluetoothDevice)message.obj);
+                break;
+            case MSG_DISCONNECT:
+
+                break;
+            case MSG_DISCONNECTED:
+                //doDisconnected((BluetoothDevice)message.obj);
+                break;
+            case MSG_NOTIFY:
+                //doNotifyRegisteredDevice((NotifyRequest)message.obj);
+                break;
+            case MSG_NOTIFIED:
+                //doNotified((BluetoothDevice)message.obj);
+                break;
+            case MSG_WRITE:
+
+                break;
+            case MSG_REGISTER:
+                //doRegister((RegRequest)message.obj);
+                break;
+
+        }
+        return true;
     }
 
     public void start(){
@@ -117,35 +220,40 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
     public boolean deviceInfoAvailable() { return disAvailable; }
 
+    public void doNotify (WriteData writeData) {
+        BluetoothGattCharacteristic characteristic = mGattServer
+                .getService(UART_UUID)
+                .getCharacteristic(RX_UUID);
+        characteristic.setValue(writeData.data);
+        idle = false;
+
+        Log.i("BlueNet", "notifying " + writeData.device.getAddress());
+
+        try {
+            boolean res = mGattServer.notifyCharacteristicChanged(writeData.device, characteristic, false);
+
+            if (!res) {
+                Log.e("BlueNet", "Notification unsuccessful!");
+            }
+        } catch (NullPointerException x) {
+            Log.e("BlueNet", "A device disconnected unexpectedly");
+        }
+    }
+
     // Send data to connected UART device.
     public void send(byte[] data) {
         if (data == null || data.length == 0) {
             // Do nothing if there is no connection or message to send.
             return;
         }
-        // Update TX characteristic value.  Note the setValue overload that takes a byte array must be used.
-        writeInProgress = true; // Set the write in progress flag
 
-        BluetoothGattCharacteristic characteristic = mGattServer
-                .getService(UART_UUID)
-                .getCharacteristic(RX_UUID);
-        characteristic.setValue(data);
         for (BluetoothDevice device : mRegisteredDevices) {
-            //set the value of the characteristic
+            writeQueue.offer(new WriteData(device, data));
+        }
 
-            Log.i("BlueNet", "notifying " + device.getAddress());
-            try {
-                boolean res = mGattServer.notifyCharacteristicChanged(device, characteristic, false);
-
-                if (!res) {
-                    Log.e("BlueNet", "Notification unsuccessful!");
-                }
-            } catch (NullPointerException x) {
-                Log.e("BlueNet", "A device disconnected unexpectedly");
-            }
-
-            // ToDo: Update to include a timeout in case this goes into the weeds
-            while (writeInProgress); // Wait for the flag to clear in onCharacteristicWrite
+        if (idle && !writeQueue.isEmpty()) {
+            WriteData writeData = writeQueue.poll();
+            doNotify(writeData);
         }
     }
 
@@ -258,6 +366,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         Log.i("Peripheral", new String(value));
         //handle long writes?
         //handle different receive queues
+        characteristic.setValue(value);
         notifyOnReceive(this, characteristic);
 
     }
@@ -303,8 +412,16 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     @Override
     public void onNotificationSent (BluetoothDevice device, int status) {
         super.onNotificationSent(device, status);
-        writeInProgress = false;
         if (status == BluetoothGatt.GATT_SUCCESS) {
+
+            WriteData writeData = writeQueue.poll();
+
+            if (null == writeData) { //empty!
+                idle = true;
+            } else {
+                doNotify(writeData);
+            }
+
             //bleHandler.obtainMessage(MSG_NOTIFIED, device).sendToTarget();
             Log.d("BlueNet", "Notification sent");
         }

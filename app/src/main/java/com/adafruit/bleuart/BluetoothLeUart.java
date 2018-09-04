@@ -3,6 +3,7 @@ package com.adafruit.bleuart;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
@@ -57,8 +58,21 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     private BluetoothGattCharacteristic disSWRev;
     private boolean disAvailable;
 
-    // Queues for characteristic read (synchronous)
+
+    // Queues for characteristic write (synchronous)
     private Queue<BluetoothGattCharacteristic> readQueue;
+    private Queue<WriteData> writeQueue = new ConcurrentLinkedQueue<WriteData>();
+    private boolean idle = true;
+
+    public class WriteData {
+        public BluetoothGatt gatt;
+        byte [] data;
+
+        public WriteData (BluetoothGatt gatt, byte [] data) {
+            this.gatt = gatt;
+            this.data = data;
+        }
+    }
 
     public BluetoothLeUart(Context context) {
         super();
@@ -102,17 +116,31 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     public boolean deviceInfoAvailable() { return disAvailable; }
 
     // Send data to connected UART device.
+
+    public void doWrite (WriteData writeData) {
+        Log.i("BlueNet", "writing " + new String(writeData.data));
+        BluetoothGattService service = writeData.gatt.getService(UART_UUID);
+        BluetoothGattCharacteristic characteristic = service.getCharacteristic(TX_UUID);
+        characteristic.setValue(writeData.data);
+        idle = false;
+
+        writeData.gatt.writeCharacteristic(characteristic);
+    }
+
+    // Send data to connected UART device.
     public void send(byte[] data) {
-        if (tx == null || data == null || data.length == 0) {
+        if (data == null || data.length == 0) {
             // Do nothing if there is no connection or message to send.
             return;
         }
-        // Update TX characteristic value.  Note the setValue overload that takes a byte array must be used.
-        tx.setValue(data);
-        writeInProgress = true; // Set the write in progress flag
-        gatt.writeCharacteristic(tx);
-        // ToDo: Update to include a timeout in case this goes into the weeds
-        while (writeInProgress); // Wait for the flag to clear in onCharacteristicWrite
+
+        //could expand to communicate to other periphs
+        writeQueue.offer(new WriteData(gatt, data));
+
+        if (idle && !writeQueue.isEmpty()) {
+            WriteData writeData = writeQueue.poll();
+            doWrite(writeData);
+        }
     }
 
     // Send data to connected UART device.
@@ -315,8 +343,18 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
 
         if (status == BluetoothGatt.GATT_SUCCESS) {
             Log.d("BlueNet","Characteristic write successful");
+            WriteData writeData = writeQueue.poll();
+
+            if (null == writeData) { //empty!
+                idle = true;
+            } else {
+                doWrite(writeData);
+            }
+
+        } else {
+            Log.d("BlueNet","Characteristic write FAILED");
         }
-        writeInProgress = false;
+
     }
 
     @Override
