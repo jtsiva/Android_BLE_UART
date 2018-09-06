@@ -370,10 +370,11 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
         if (!parseUUIDs(scanRecord).contains(UART_UUID)) {
             return;
         }
-        // Notify registered callbacks of found device.
-        notifyOnDeviceFound(device);
+
         // Connect to first found device if required.
         if (connectFirst) {
+            // Notify registered callbacks of found device.
+            notifyOnDeviceFound(device);
             // Stop scanning for devices.
             stopScan();
             // Prevent connections to future found devices.
@@ -381,7 +382,9 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
             // Connect to device.
             device.connectGatt(context, false, this, BluetoothDevice.TRANSPORT_LE);
         }
-        else {
+        else if (!mConnectedDevices.containsKey(device.getAddress())){
+            // Notify registered callbacks of found device.
+            notifyOnDeviceFound(device);
             device.connectGatt(context, false, this, BluetoothDevice.TRANSPORT_LE);
         }
     }
