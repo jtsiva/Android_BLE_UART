@@ -177,7 +177,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     }
 
     public void start(){
-        connectFirstAvailable();
+        startScan();
     }
 
     public void stop() {
@@ -379,6 +379,9 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
             // Prevent connections to future found devices.
             connectFirst = false;
             // Connect to device.
+            device.connectGatt(context, false, this, BluetoothDevice.TRANSPORT_LE);
+        }
+        else {
             device.connectGatt(context, false, this, BluetoothDevice.TRANSPORT_LE);
         }
     }
