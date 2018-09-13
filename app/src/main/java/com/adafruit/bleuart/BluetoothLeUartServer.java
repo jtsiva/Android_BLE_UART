@@ -147,7 +147,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     public boolean deviceInfoAvailable() { return false; }
 
     public int getNumConnections() {
-        return mRegisteredDevices.length();
+        return mRegisteredDevices.size();
     }
 
     public void doNotify (WriteData writeData) {
