@@ -40,7 +40,7 @@ import android.util.Log;
 import static android.bluetooth.BluetoothGattService.SERVICE_TYPE_PRIMARY;
 import static android.bluetooth.BluetoothGattService.SERVICE_TYPE_SECONDARY;
 
-class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartBase,Handler.Callback{
+class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartBase{
     private static final String ERR_TAG = "FATAL ERROR";
     private static final String INFO_TAG = "APP_INFO";
 
@@ -79,22 +79,11 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     private BluetoothAdapter mBluetoothAdapter;
     private BluetoothLeAdvertiser mBluetoothLeAdvertiser;
     private Set<BluetoothDevice> mRegisteredDevices = new HashSet();
-    private BluetoothGattCharacteristic tx;
-    private BluetoothGattCharacteristic rx;
 
-    // Device Information state.
-    private BluetoothGattCharacteristic disManuf;
-    private BluetoothGattCharacteristic disModel;
-    private BluetoothGattCharacteristic disHWRev;
-    private BluetoothGattCharacteristic disSWRev;
-    private boolean disAvailable;
 
     // Queues for characteristic write (synchronous)
     private Queue<WriteData> writeQueue = new ConcurrentLinkedQueue<WriteData>();
     private boolean idle = true;
-
-    //Handler for working with BT ops
-    private Handler bleHandler;
 
     public class WriteData {
         public BluetoothDevice device;
@@ -106,43 +95,6 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         }
     }
 
-    //Classes used to wrap up message handler data
-    public class WriteRequest {
-        public BluetoothDevice device;
-        public int requestId;
-        public int offset;
-        public BluetoothGattCharacteristic characteristic;
-
-        public WriteRequest(BluetoothDevice device,
-                           int requestId, int offset, BluetoothGattCharacteristic characteristic) {
-            this.device = device;
-            this.requestId = requestId;
-            this.offset = offset;
-            this.characteristic = characteristic;
-        }
-    }
-
-    public class RegRequest {
-        public BluetoothDevice device;
-        public int requestId;
-        public BluetoothGattDescriptor descriptor;
-        public boolean preparedWrite;
-        public boolean responseNeeded;
-        public int offset;
-        public byte[] value;
-
-        public RegRequest(BluetoothDevice device, int requestId, BluetoothGattDescriptor descriptor,
-                          boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
-            this.device = device;
-            this.requestId = requestId;
-            this.descriptor = descriptor;
-            this.preparedWrite = preparedWrite;
-            this.responseNeeded = responseNeeded;
-            this.offset = offset;
-            this.value = value;
-        }
-    }
-
     public BluetoothLeUartServer(Context context) {
         this.context = context;
 
@@ -150,47 +102,11 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
                 (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
         mBluetoothAdapter = mBluetoothManager.getAdapter();
 
-        HandlerThread handlerThread = new HandlerThread("BleThread");
-        handlerThread.start();
-        bleHandler = new Handler(handlerThread.getLooper(), this);
-
         //create the gatt server
         mGattServer = mBluetoothManager.openGattServer(context,this);
 
         //add the service to the gatt server
         mGattServer.addService(createUartService());
-    }
-
-    @Override
-    public boolean handleMessage(Message message) {
-        switch (message.what) {
-            case MSG_CONNECT:
-
-                break;
-            case MSG_CONNECTED:
-                //doConnected((BluetoothDevice)message.obj);
-                break;
-            case MSG_DISCONNECT:
-
-                break;
-            case MSG_DISCONNECTED:
-                //doDisconnected((BluetoothDevice)message.obj);
-                break;
-            case MSG_NOTIFY:
-                //doNotifyRegisteredDevice((NotifyRequest)message.obj);
-                break;
-            case MSG_NOTIFIED:
-                //doNotified((BluetoothDevice)message.obj);
-                break;
-            case MSG_WRITE:
-
-                break;
-            case MSG_REGISTER:
-                //doRegister((RegRequest)message.obj);
-                break;
-
-        }
-        return true;
     }
 
     public void start(){
@@ -228,7 +144,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         return "";
     };
 
-    public boolean deviceInfoAvailable() { return disAvailable; }
+    public boolean deviceInfoAvailable() { return false; }
 
     public void doNotify (WriteData writeData) {
         BluetoothGattCharacteristic characteristic = mGattServer
