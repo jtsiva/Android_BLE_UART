@@ -22,4 +22,5 @@ public interface UartBase {
     public String getDeviceInfo();
     public void send(byte[] data);
     public void send(String data);
+    public int getNumConnections();
 }

@@ -173,14 +173,16 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
     public void onConnectFailed(UartBase uart) {
         // Called when some error occured which prevented UART connection from completing.
         writeLine("Error connecting to device!");
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                send = (Button)findViewById(R.id.send);
-                send.setClickable(false);
-                send.setEnabled(false);
-            }
-        });
+        if (0 == uart.getNumConnections()) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    send = (Button) findViewById(R.id.send);
+                    send.setClickable(false);
+                    send.setEnabled(false);
+                }
+            });
+        }
     }
 
     @Override
@@ -188,14 +190,16 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
         // Called when the UART device disconnected.
         writeLine("Disconnected!");
         // Disable the send button.
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                send = (Button)findViewById(R.id.send);
-                send.setClickable(false);
-                send.setEnabled(false);
-            }
-        });
+        if (0 == uart.getNumConnections()) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    send = (Button) findViewById(R.id.send);
+                    send.setClickable(false);
+                    send.setEnabled(false);
+                }
+            });
+        }
     }
 
     @Override

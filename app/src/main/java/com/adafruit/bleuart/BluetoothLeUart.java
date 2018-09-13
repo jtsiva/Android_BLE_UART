@@ -115,6 +115,10 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
 
     public boolean deviceInfoAvailable() { return disAvailable; }
 
+    public int getNumConnections() {
+        return (gatt == null) : 0, 1;
+    }
+
     // Send data to connected UART device.
 
     public void doWrite (WriteData writeData) {

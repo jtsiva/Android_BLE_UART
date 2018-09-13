@@ -146,6 +146,10 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
     public boolean deviceInfoAvailable() { return false; }
 
+    public int getNumConnections() {
+        return mRegisteredDevices.length();
+    }
+
     public void doNotify (WriteData writeData) {
         BluetoothGattCharacteristic characteristic = mGattServer
                 .getService(UART_UUID)
@@ -272,6 +276,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
                 case BluetoothGatt.STATE_DISCONNECTED:
                   //  bleHandler.obtainMessage(MSG_DISCONNECTED, device).sendToTarget();
+                    mRegisteredDevices.remove(device);
                     notifyOnDisconnected(this);
                     break;
             }
