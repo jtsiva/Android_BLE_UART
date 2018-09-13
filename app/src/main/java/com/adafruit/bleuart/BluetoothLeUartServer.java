@@ -29,6 +29,7 @@ import java.util.Queue;
 import java.util.UUID;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.Objects;
 
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -378,6 +379,26 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
                 responseNeeded, offset, value);
         Log.i("Peripheral", "onCharacteristicWriteRequest " + characteristic.getUuid().toString());
         Log.i("Peripheral", new String(value));
+        String data = new String(value);
+        if (data.matches("<.*>")) { //we have a neighbor address update
+            data.replaceFirst("<", "");
+            data.replaceFirst(">", "");
+
+            String [] addresses = data.split("\\s");
+
+            for (int i = 0; i < addresses.length; i++) {
+                boolean found = false;
+                for (BluetoothDevice dev : mRegisteredDevices) {
+                    if (Objects.equals(addresses[i], dev.getAddress()) && !found) {
+                        found = true;
+                    }
+                }
+
+                if (!found) {
+                    notifyOnDeviceFound(mBluetoothAdapter.getRemoteDevice(addresses[i]));
+                }
+            }
+        }
         //handle long writes?
         //handle different receive queues
         characteristic.setValue(value);

@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.lang.String;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.Objects;
 
 import android.util.Log;
 
@@ -160,7 +161,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
 
     public void connect(BluetoothDevice device) {
         for (Map.Entry<String, BluetoothGatt> entry : mConnectedDevices.entrySet()) {
-            if (device.getAddress() == entry.getValue().getRemoteDevice().getAddress()) {
+            if (Objects.equals(device.getAddress(),entry.getValue().getDevice().getAddress())) {
                 return; //already connected, so don't try again
             }
         }
@@ -389,18 +390,29 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
             stopScan();
             // Prevent connections to future found devices.
             connectFirst = false;
-            // Connect to device.
-            device.connectGatt(context, false, this, BluetoothDevice.TRANSPORT_LE);
         }
         else if (!mConnectedDevices.containsKey(device.getAddress())){
             // Notify registered callbacks of found device.
             notifyOnDeviceFound(device);
-            device.connectGatt(context, false, this, BluetoothDevice.TRANSPORT_LE);
         }
     }
 
     // Private functions to simplify the notification of all callbacks of a certain event.
     private void notifyOnConnected(BluetoothLeUart uart) {
+        //the first thing we want to do upon establishing a connection
+        //is send a list of our neighbors as:
+        //<addr1 addr2 addr3 ...>
+        String neighbors = new String();
+        neighbors.concat("<");
+        for (Map.Entry<String, BluetoothGatt> entry : mConnectedDevices.entrySet()) {
+            //could expand to communicate to other periphs
+            neighbors.concat(entry.getValue().getDevice().getAddress());
+            neighbors.concat(" ");
+        }
+        neighbors.concat(">");
+
+        send(neighbors);
+
         for (UartBase.HostCallback cb : callbacks.keySet()) {
             if (cb != null) {
                 cb.onConnected(uart);

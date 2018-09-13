@@ -1,6 +1,7 @@
 package com.adafruit.bleuart;
 
 import android.bluetooth.BluetoothDevice;
+import android.content.Context;
 
 public class DualRoleBluetoothLeUart implements UartBase {
     public static final int CENTRAL = 0;
