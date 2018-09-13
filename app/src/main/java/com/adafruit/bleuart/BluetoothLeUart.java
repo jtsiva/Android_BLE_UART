@@ -259,6 +259,11 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
         final BluetoothGatt bluetoothGatt = mConnectedDevices.get(address);
 
         //reference to each UART characteristic
+        if (null == bluetoothGatt.getService(UART_UUID)) {
+            connectFailure();
+            Log.e("", "onServicesDiscovered gatt failure");
+            return;
+        }
         BluetoothGattCharacteristic rx = bluetoothGatt.getService(UART_UUID).getCharacteristic(RX_UUID);
 
         // Save reference to each DIS characteristic.
@@ -403,13 +408,14 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
         //is send a list of our neighbors as:
         //<addr1 addr2 addr3 ...>
         String neighbors = new String();
-        neighbors.concat("<");
+        neighbors = "<";
         for (Map.Entry<String, BluetoothGatt> entry : mConnectedDevices.entrySet()) {
             //could expand to communicate to other periphs
-            neighbors.concat(entry.getValue().getDevice().getAddress());
-            neighbors.concat(" ");
+            neighbors += entry.getValue().getDevice().getAddress();
+            neighbors += " ";
         }
-        neighbors.concat(">");
+        neighbors += ">";
+        Log.i("gatt-client", neighbors);
 
         send(neighbors);
 
