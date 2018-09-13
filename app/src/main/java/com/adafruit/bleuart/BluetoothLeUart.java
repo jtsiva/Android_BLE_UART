@@ -158,6 +158,16 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
         callbacks.remove(callback);
     }
 
+    public void connect(BluetoothDevice device) {
+        for (Map.Entry<String, BluetoothGatt> entry : mConnectedDevices.entrySet()) {
+            if (device.getAddress() == entry.getValue().getRemoteDevice().getAddress()) {
+                return; //already connected, so don't try again
+            }
+        }
+
+        device.connectGatt(context, false, this, BluetoothDevice.TRANSPORT_LE);
+    }
+
     // Disconnect to a device if currently connected.
     public void disconnect() {
         for (Map.Entry<String, BluetoothGatt> entry : mConnectedDevices.entrySet()) {

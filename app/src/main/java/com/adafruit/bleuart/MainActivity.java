@@ -90,17 +90,16 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
 
         Bundle receiveBundle = this.getIntent().getExtras();
         final int role = receiveBundle.getInt("role");
+        uart = new DualRoleBluetoothLeUart(getApplicationContext(), role);
 
         switch(role) {
             case RoleChooser.CENTRAL:
                 writeLine("I am a central!");
                 writeLine("Scanning for devices ...");
-                uart = new BluetoothLeUart(getApplicationContext());
                 break;
             case RoleChooser.PERIPHERAL:
                 writeLine("I am a peripheral!");
                 writeLine("Advertising device ...");
-                uart = new BluetoothLeUartServer(getApplicationContext());
                 break;
             case RoleChooser.BRIDGE:
                 break;

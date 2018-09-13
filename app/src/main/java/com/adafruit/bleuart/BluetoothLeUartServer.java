@@ -197,6 +197,10 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         startLeAdvertising();
     }
 
+    public void connect(BluetoothDevice device) {
+        //do nothing
+    }
+
     public void disconnect() {
         //do nothing
     }
