@@ -388,21 +388,26 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
             for (int i = 0; i < addresses.length; i++) {
                 boolean found = false;
+
+                //see if we are already connected to that device and ignore if found
                 for (BluetoothDevice dev : mRegisteredDevices) {
                     if (Objects.equals(addresses[i], dev.getAddress()) && !found) {
                         found = true;
                     }
                 }
 
+                //we don't know who this is! Go tell someone!
                 if (!found) {
                     notifyOnDeviceFound(mBluetoothAdapter.getRemoteDevice(addresses[i]));
                 }
             }
+        } else {
+            //handle long writes?
+            //handle different receive queues
+            characteristic.setValue(value);
+            notifyOnReceive(this, characteristic);
         }
-        //handle long writes?
-        //handle different receive queues
-        characteristic.setValue(value);
-        notifyOnReceive(this, characteristic);
+
         if (responseNeeded) {
             mGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
         }
