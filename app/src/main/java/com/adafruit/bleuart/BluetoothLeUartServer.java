@@ -377,12 +377,14 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
                                              byte[] value) {
         super.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite,
                 responseNeeded, offset, value);
-        Log.i("Peripheral", "onCharacteristicWriteRequest " + characteristic.getUuid().toString());
+        //Log.i("Peripheral", "onCharacteristicWriteRequest " + characteristic.getUuid().toString());
         Log.i("Peripheral", new String(value));
         String data = new String(value);
         if (data.matches("<.*>")) { //we have a neighbor address update
-            data.replaceFirst("<", "");
-            data.replaceFirst(">", "");
+            data = data.replaceFirst("<", "");
+            Log.i("Peripheral", new String(data));
+            data = data.replaceFirst(">", "");
+            Log.i("Peripheral", new String(data));
 
             String [] addresses = data.split("\\s");
 

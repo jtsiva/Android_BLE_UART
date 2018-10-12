@@ -420,17 +420,17 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
         neighbors = "<";
         for (Map.Entry<String, BluetoothGatt> entry : mConnectedDevices.entrySet()) {
             if (!Objects.equals(target.getDevice().getAddress(),
-                                entry.getValue().getDevice().getAddress())) {
+                    entry.getValue().getDevice().getAddress())) {
                 neighbors += entry.getValue().getDevice().getAddress();
                 neighbors += " ";
             }
         }
         neighbors += ">";
         Log.i("gatt-client", neighbors);
-
-        send(new WriteData(target, neighbors.getBytes(Charset.forName("UTF-8"))));
+        if (2 < neighbors.length()) { //we have more in the string than <>
+            send(new WriteData(target, neighbors.getBytes(Charset.forName("UTF-8"))));
+        }
     }
-
     // Private functions to simplify the notification of all callbacks of a certain event.
     private void notifyOnConnected(BluetoothLeUart uart) {
 
