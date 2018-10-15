@@ -206,7 +206,10 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     public void startScan() {
         if (adapter != null) {
             adapter.startLeScan(this);
+        } else {
+            Log.i("Central", "FAILED TO START SCAN");
         }
+
     }
 
     // Connect to the first available UART device.

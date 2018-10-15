@@ -377,6 +377,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
                                              byte[] value) {
         super.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite,
                 responseNeeded, offset, value);
+        boolean found = false;
         //Log.i("Peripheral", "onCharacteristicWriteRequest " + characteristic.getUuid().toString());
         Log.i("Peripheral", new String(value));
         String data = new String(value);
@@ -387,21 +388,20 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
             Log.i("Peripheral", new String(data));
 
             String [] addresses = data.split("\\s");
+            BluetoothDevice temp = device;
 
-            for (int i = 0; i < addresses.length; i++) {
-                boolean found = false;
-
+            for (int i = 0; i < addresses.length && !found; i++) {
                 //see if we are already connected to that device and ignore if found
                 for (BluetoothDevice dev : mRegisteredDevices) {
                     if (Objects.equals(addresses[i], dev.getAddress()) && !found) {
                         found = true;
                     }
                 }
-
-                //we don't know who this is! Go tell someone!
-                if (!found) {
-                    notifyOnDeviceFound(mBluetoothAdapter.getRemoteDevice(addresses[i]));
-                }
+            }
+            //we were sent an address of someone we don't know! Go tell someone!
+            if (!found) {
+                Log.i("Peripheral", "Found someone new!");
+                notifyOnDeviceFound(device); //pass a random device since it'll be ignored anyway
             }
         } else {
             //handle long writes?
