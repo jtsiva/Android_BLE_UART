@@ -40,8 +40,7 @@ public class DualRoleBluetoothLeUart implements UartBase {
 
     public void connect(BluetoothDevice device) {
         if (PERIPHERAL == this.gapRole) {
-            this.gapRole = BRIDGE; // should we switch to C or C + P?
-            client.start();//if we were a P then we want to try to discover the device on our own
+            server.connect(device);
         } else {
             client.connect(device);
         }

@@ -199,7 +199,8 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     }
 
     public void connect(BluetoothDevice device) {
-        //do nothing
+        // THIS WILL NO WORK: https://stackoverflow.com/questions/32886725/android-4-4-bluetooth-low-energy-connect-without-scanning-for-a-ble-device
+        mGattServer.connect(device, false);
     }
 
     public void disconnect() {
@@ -390,19 +391,23 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
             String [] addresses = data.split("\\s");
             BluetoothDevice temp = device;
 
-            for (int i = 0; i < addresses.length && !found; i++) {
+            for (int i = 0; i < addresses.length; i++) {
                 //see if we are already connected to that device and ignore if found
+                found = false;
                 for (BluetoothDevice dev : mRegisteredDevices) {
                     if (Objects.equals(addresses[i], dev.getAddress()) && !found) {
                         found = true;
                     }
                 }
+                //we were sent an address of someone we don't know! Go tell someone!
+                //THIS WILL NOT WORK: https://stackoverflow.com/questions/32886725/android-4-4-bluetooth-low-energy-connect-without-scanning-for-a-ble-device
+                if (!found) {
+                    Log.i("Peripheral", "Found someone new!");
+                    this.stop();
+                    notifyOnDeviceFound(mBluetoothAdapter.getRemoteDevice(addresses[i]));
+                }
             }
-            //we were sent an address of someone we don't know! Go tell someone!
-            if (!found) {
-                Log.i("Peripheral", "Found someone new!");
-                notifyOnDeviceFound(device); //pass a random device since it'll be ignored anyway
-            }
+
         } else {
             //handle long writes?
             //handle different receive queues
