@@ -54,6 +54,9 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     private boolean connectFirst;
     private boolean writeInProgress; // Flag to indicate a write is currently in progress
 
+    private Set<BluetoothDevice> mDiscoveredDevices = new HashSet<BluetoothDevice>();
+
+
     // Device Information state.
     private BluetoothGattCharacteristic disManuf;
     private BluetoothGattCharacteristic disModel;
@@ -409,9 +412,11 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
             // Prevent connections to future found devices.
             connectFirst = false;
         }
-        else if (!mConnectedDevices.containsKey(device.getAddress())){
+        else if (!mConnectedDevices.containsKey(device.getAddress())
+                && !mDiscoveredDevices.contains(device)){
             // Notify registered callbacks of found device.
             notifyOnDeviceFound(device);
+            mDiscoveredDevices.add(device);
         }
     }
 
