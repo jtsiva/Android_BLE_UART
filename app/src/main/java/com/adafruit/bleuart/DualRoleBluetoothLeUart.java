@@ -2,6 +2,7 @@ package com.adafruit.bleuart;
 
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
+import java.security.SecureRandom;
 
 public class DualRoleBluetoothLeUart implements UartBase {
     public static final int CENTRAL = 0;
@@ -11,12 +12,20 @@ public class DualRoleBluetoothLeUart implements UartBase {
     private BluetoothLeUartServer server;
     private BluetoothLeUart client;
     private int gapRole;
+    private int myRandomNumber;
 
     public DualRoleBluetoothLeUart (Context context, int gapRole) {
         server = new BluetoothLeUartServer (context);
         client = new BluetoothLeUart (context);
 
         this.gapRole = gapRole;
+
+        SecureRandom random = new SecureRandom();
+        myRandomNumber = random.nextInt();
+    }
+
+    public DualRoleBluetoothLeUart (Context context) {
+        this(context, BRIDGE);
     }
 
     public void registerCallback(UartBase.HostCallback callback) {
@@ -29,23 +38,16 @@ public class DualRoleBluetoothLeUart implements UartBase {
     }
 
     public void start() {
-        //start either scanning or advertising
-        if (CENTRAL == this.gapRole) {
-            client.start();
-        }
-        else if (PERIPHERAL == this.gapRole) {
-            server.start();
-        }
+        //start scanning and advertising
+        ByteBuffer b = ByteBuffer.allocate(4);
+        b.putInt(myRandomNumber);
+        client.start(myRandomNumber);
+        server.start(b.array());
+
     }
 
     public void connect(BluetoothDevice device) {
-        // TODO: handle case where we want to go from C -> C+P
-        if (PERIPHERAL == this.gapRole) {
-            this.gapRole = BRIDGE; // should we switch to C or C + P?
-            client.start();//if we were a P then we want to try to discover the device on our own
-        } else {
-            client.connect(device);
-        }
+        client.connect(device);
     }
 
     public void disconnect() {
@@ -53,13 +55,10 @@ public class DualRoleBluetoothLeUart implements UartBase {
     }
 
     public void stop() {
-        //stop either scanning or advertising
-        if (CENTRAL == this.gapRole) {
-            client.stop();
-        }
-        else if (PERIPHERAL == this.gapRole) {
-            server.stop();
-        }
+        //stop scanning and advertising
+        client.stop();
+        server.stop();
+
     }
     public String getDeviceInfo() {
         return "";

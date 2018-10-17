@@ -70,6 +70,8 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     private Queue<WriteData> writeQueue = new ConcurrentLinkedQueue<WriteData>();
     private boolean idle = true;
 
+    private int myID = 0;
+
     public class WriteData {
         public BluetoothGatt gatt;
         byte [] data;
@@ -200,6 +202,10 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
         }
     }
 
+    public void start(int myID) {
+        this.myID;
+        start();
+    }
     public void start(){
         startScan();
     }
@@ -339,7 +345,6 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
         if (status == BluetoothGatt.GATT_SUCCESS) {
             Log.w("Central", "Descriptor written!");
             notifyOnConnected(this);
-            sendNeighborList(gatt);
         } else {
             Log.w("Central", "Descriptor NOT written!");
         }
@@ -348,7 +353,6 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     @Override
     public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
         super.onCharacteristicChanged(gatt, characteristic);
-        // TODO: check for address list from P
         notifyOnReceive(this, characteristic);
     }
 
@@ -420,30 +424,13 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
         else if (!mConnectedDevices.containsKey(device.getAddress())
                 && !mDiscoveredDevices.contains(device)){
             // Notify registered callbacks of found device.
+            Log.i("Central", "advertised: " + new String(scanRecord));
+                    
             notifyOnDeviceFound(device);
             mDiscoveredDevices.add(device);
         }
     }
 
-    private void sendNeighborList (BluetoothGatt target) {
-        //the first thing we want to do upon establishing a connection
-        //is send a list of our neighbors as:
-        //<addr1 addr2 addr3 ...>
-        String neighbors = new String();
-        neighbors = "<";
-        for (Map.Entry<String, BluetoothGatt> entry : mConnectedDevices.entrySet()) {
-            if (!Objects.equals(target.getDevice().getAddress(),
-                    entry.getValue().getDevice().getAddress())) {
-                neighbors += entry.getValue().getDevice().getAddress();
-                neighbors += " ";
-            }
-        }
-        neighbors += ">";
-        Log.i("gatt-client", neighbors);
-        if (2 < neighbors.length()) { //we have more in the string than <>
-            send(new WriteData(target, neighbors.getBytes(Charset.forName("UTF-8"))));
-        }
-    }
     // Private functions to simplify the notification of all callbacks of a certain event.
     private void notifyOnConnected(BluetoothLeUart uart) {
 

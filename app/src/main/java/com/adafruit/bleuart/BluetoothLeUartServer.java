@@ -114,6 +114,10 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         startLeAdvertising();
     }
 
+    public void start(byte [] advData) {
+        startLeAdvertising(advData);
+    }
+
     public void connect(BluetoothDevice device) {
         //do nothing
     }
@@ -228,9 +232,8 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         return service;
     }
 
+    public void startLeAdvertising(byte [] extraData){
 
-
-    public void startLeAdvertising(){ // without adv payload
         AdvertiseSettings settings = new AdvertiseSettings.Builder()
                 .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY) //3 modes: LOW_POWER, BALANCED, LOW_LATENCY
                 .setConnectable(true)
@@ -243,6 +246,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
                 .setIncludeDeviceName(false)
                 .setIncludeTxPowerLevel(false)
                 .addServiceUuid(new ParcelUuid(UART_UUID))
+                .addServiceData(new ParcelUuid(BLUENET_SERVICE_UUID),extraData)
                 .build();
 
         //get an advertiser object
