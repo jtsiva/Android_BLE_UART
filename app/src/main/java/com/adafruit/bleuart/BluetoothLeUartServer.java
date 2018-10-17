@@ -304,9 +304,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         String data = new String(value);
         if (data.matches("<.*>")) { //we have a neighbor address update
             data = data.replaceFirst("<", "");
-            Log.i("Peripheral", new String(data));
             data = data.replaceFirst(">", "");
-            Log.i("Peripheral", new String(data));
 
             String [] addresses = data.split("\\s");
             BluetoothDevice temp = device;
@@ -357,6 +355,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
             if (Arrays.equals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE, value)) {
                 mRegisteredDevices.add(device);
                 notifyOnConnected(this);
+                // TODO: send list of registered devices
             } else if (Arrays.equals(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE, value)) {
                 mRegisteredDevices.remove(device);
                 notifyOnDisconnected(this);

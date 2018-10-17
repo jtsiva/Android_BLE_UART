@@ -348,6 +348,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     @Override
     public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
         super.onCharacteristicChanged(gatt, characteristic);
+        // TODO: check for address list from P
         notifyOnReceive(this, characteristic);
     }
 
