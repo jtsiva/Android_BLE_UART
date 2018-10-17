@@ -124,18 +124,21 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     public void disconnect() {
         //do nothing
     }
-    public void stop(){
-        mBluetoothLeAdvertiser.stopAdvertising(new AdvertiseCallback (){
-            @Override
-            public void onStartSuccess(AdvertiseSettings settingsInEffect) {
-                Log.i(INFO_TAG, "LE Advertise Started");
-            }
 
-            @Override
-            public void onStartFailure(int errorCode) {
-                Log.e(ERR_TAG, "LE Advertise Failed: " + errorCode);
-            }
-        });
+    private AdvertiseCallback mAdvertiseCallback = new AdvertiseCallback (){
+        @Override
+        public void onStartSuccess(AdvertiseSettings settingsInEffect) {
+            Log.i(INFO_TAG, "LE Advertise Started");
+        }
+
+        @Override
+        public void onStartFailure(int errorCode) {
+            Log.e(ERR_TAG, "LE Advertise Failed: " + errorCode);
+        }
+    };
+
+    public void stop(){
+        mBluetoothLeAdvertiser.stopAdvertising(mAdvertiseCallback);
     }
 
     // Register the specified callback to receive UART callbacks.
@@ -256,17 +259,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         }
 
         //start advertising
-        mBluetoothLeAdvertiser.startAdvertising(settings, data, new AdvertiseCallback (){
-            @Override
-            public void onStartSuccess(AdvertiseSettings settingsInEffect) {
-                Log.i(INFO_TAG, "LE Advertise Started");
-            }
-
-            @Override
-            public void onStartFailure(int errorCode) {
-                Log.e(ERR_TAG, "LE Advertise Failed: " + errorCode);
-            }
-        });
+        mBluetoothLeAdvertiser.startAdvertising(settings, data, mAdvertiseCallback);
     }
 
     //GATT server callbacks

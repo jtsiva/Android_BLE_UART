@@ -7,6 +7,12 @@ import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.BluetoothLeScanner;
+import android.bluetooth.le.ScanFilter;
+import android.bluetooth.le.ScanResult;
+import android.bluetooth.le.ScanSettings;
+import android.os.ParcelUuid;
 import android.content.Context;
 
 import java.nio.ByteBuffer;
@@ -27,10 +33,11 @@ import java.util.Objects;
 
 import android.util.Log;
 
-public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothAdapter.LeScanCallback, UartBase {
+public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
 
     // UUIDs for UART service and associated characteristics.
     public static UUID UART_UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
+    private static UUID UART_DATA_UUID = UUID.fromString("00000001-0000-1000-8000-00805F9B34FB");
     public static UUID TX_UUID   = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
     public static UUID RX_UUID   = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
 
@@ -47,7 +54,8 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     // Internal UART state.
     private Context context;
     private WeakHashMap<UartBase.HostCallback, Object> callbacks = new WeakHashMap<UartBase.HostCallback, Object>();
-    private BluetoothAdapter adapter;
+    private BluetoothAdapter mBluetoothAdapter;
+    private BluetoothLeScanner mBluetoothLeScanner;
     private Map<String, BluetoothGatt> mConnectedDevices = new HashMap<String, BluetoothGatt>();
     private BluetoothGattCharacteristic tx;
     private BluetoothGattCharacteristic rx;
@@ -85,7 +93,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     public BluetoothLeUart(Context context) {
         super();
         this.context = context;
-        this.adapter = BluetoothAdapter.getDefaultAdapter();
+        this.mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
         this.disManuf = null;
         this.disModel = null;
@@ -195,34 +203,112 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
         mConnectedDevices.clear();
     }
 
-    // Stop any in progress UART device scan.
-    public void stopScan() {
-        if (adapter != null) {
-            adapter.stopLeScan(this);
-        }
-    }
-
     public void start(int myID) {
         this.myID = myID;
         start();
     }
     public void start(){
-        startScan();
+        startLeScan();
+
     }
 
     public void stop() {
-
+        stopLeScan();
     }
 
-    // Start scanning for BLE UART devices.  Registered callback's onDeviceFound method will be called
-    // when devices are found during scanning.
-    public void startScan() {
-        if (adapter != null) {
-            adapter.startLeScan(this);
-        } else {
-            Log.i("Central", "FAILED TO START SCAN");
+    private void startLeScan(){
+        //scan filters
+        ScanFilter ResultsFilter = new ScanFilter.Builder()
+                .setServiceUuid(new ParcelUuid(UART_UUID))
+                .build();
+
+        ArrayList<ScanFilter> filters = new ArrayList<ScanFilter>();
+        filters.add(ResultsFilter);
+        Log.i("Central","BLE SCAN STARTED");
+
+        //scan settings
+        ScanSettings settings = new ScanSettings.Builder()
+                //.setReportDelay(0) //0: no delay; >0: queue up
+                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY) //LOW_POWER, BALANCED, LOW_LATENCY
+                .build();
+
+        mBluetoothLeScanner = mBluetoothAdapter.getBluetoothLeScanner();
+        if (mBluetoothLeScanner == null){
+            Log.e("Central", "no BLE scanner assigned!!!");
+            return;
+        }
+        mBluetoothLeScanner.startScan(filters, settings, mScanCallback);
+    }
+
+    private void stopLeScan() {
+        if (mBluetoothLeScanner != null)
+            mBluetoothLeScanner.stopScan(mScanCallback);
+        Log.i("Central","LE scan stopped");
+    }
+
+    private ScanCallback mScanCallback = new ScanCallback () {
+        @Override
+        public void onScanResult ( int callbackType, ScanResult result){
+            //bleHandler.obtainMessage(MSG_CONNECT, result.getDevice()).sendToTarget();
+            handleResult(result);
         }
 
+        @Override
+        public void onBatchScanResults (List < ScanResult > results) {
+            Log.i("Central", "onBatchScanResults: " + results.size() + " results");
+            for (ScanResult result : results) {
+                //bleHandler.obtainMessage(MSG_CONNECT, result.getDevice()).sendToTarget();
+                handleResult(result);
+            }
+        }
+
+        @Override
+        public void onScanFailed ( int errorCode){
+            Log.e("Central", "LE Scan Failed: " + errorCode);
+        }
+    };
+
+    private void handleResult(ScanResult result) {
+        // Connect to first found device if required.
+        if (connectFirst) {
+            // Notify registered callbacks of found device.
+            notifyOnDeviceFound(result.getDevice());
+            // Stop scanning for devices.
+            stop();
+            // Prevent connections to future found devices.
+            connectFirst = false;
+        }
+        else if (!mConnectedDevices.containsKey(result.getDevice().getAddress())
+                && !mDiscoveredDevices.contains(result.getDevice())){
+            mDiscoveredDevices.add(result.getDevice());
+            // Notify registered callbacks of found device.
+
+            Log.i("Central", "advertised: " + result.toString());
+
+            byte[] data = result.getScanRecord().getServiceData(new ParcelUuid(UART_DATA_UUID));
+            int id = ByteBuffer.wrap(data).getInt();
+            if (myID > id) {
+                notifyOnDeviceFound(result.getDevice());
+
+            } else if (myID == id) {
+                /*how do we handle?
+                    both sides re-roll IDs
+                    The old advertisement may be seen while new ID is set locally
+                        Old ID < new ID
+                            another device has ID < old -> consistent
+                            another device has ID == old -> other re-rolls
+                            another device has ID > old && < new -> both sides attempt to connect XXX
+                            another deivce has ID > new -> consistent
+                        old ID > new ID
+                            another device has ID < old && > new -> neither side connects XXX
+                            another device has ID == old -> other re-rolls
+                            another device has ID > old -> consistent
+                            another deivce has ID < new -> consistent
+
+                    possible solution: ignore all connection attempts for X advertisement iterations
+                */
+            }
+        }
     }
 
     // Connect to the first available UART device.
@@ -230,10 +316,10 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
         // Disconnect to any connected device.
         disconnect();
         // Stop any in progress device scan.
-        stopScan();
+        stop();
         // Start scan and connect to first available device.
         connectFirst = true;
-        startScan();
+        start();
     }
 
     // Handlers for BluetoothGatt and LeScan events.
@@ -403,50 +489,6 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
             doWrite(writeData);
         }
 
-    }
-
-    @Override
-    public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord) {
-        // Stop if the device doesn't have the UART service.
-        if (!parseUUIDs(scanRecord).contains(UART_UUID)) {
-            return;
-        }
-
-        // Connect to first found device if required.
-        if (connectFirst) {
-            // Notify registered callbacks of found device.
-            notifyOnDeviceFound(device);
-            // Stop scanning for devices.
-            stopScan();
-            // Prevent connections to future found devices.
-            connectFirst = false;
-        }
-        else if (!mConnectedDevices.containsKey(device.getAddress())
-                && !mDiscoveredDevices.contains(device)){
-            // Notify registered callbacks of found device.
-            Log.i("Central", "advertised: " + new String(scanRecord));
-            if (myID > ByteBuffer.wrap(scanRecord).getInt()) {
-                notifyOnDeviceFound(device);
-                mDiscoveredDevices.add(device);
-            } else if (myID == ByteBuffer.wrap(scanRecord).getInt()) {
-                /*how do we handle?
-                    both sides re-roll IDs
-                    The old advertisement may be seen while new ID is set locally
-                        Old ID < new ID
-                            another device has ID < old -> consistent
-                            another device has ID == old -> other re-rolls
-                            another device has ID > old && < new -> both sides attempt to connect XXX
-                            another deivce has ID > new -> consistent
-                        old ID > new ID
-                            another device has ID < old && > new -> neither side connects XXX
-                            another device has ID == old -> other re-rolls
-                            another device has ID > old -> consistent
-                            another deivce has ID < new -> consistent
-
-                    possible solution: ignore all connection attempts for X advertisement iterations
-                */
-            }
-        }
     }
 
     // Private functions to simplify the notification of all callbacks of a certain event.

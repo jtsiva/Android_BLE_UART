@@ -4,6 +4,7 @@ import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import java.security.SecureRandom;
 import java.nio.ByteBuffer;
+import android.util.Log;
 
 public class DualRoleBluetoothLeUart implements UartBase {
     public static final int CENTRAL = 0;
@@ -42,6 +43,7 @@ public class DualRoleBluetoothLeUart implements UartBase {
         //start scanning and advertising
         ByteBuffer b = ByteBuffer.allocate(4);
         b.putInt(myRandomNumber);
+        Log.i ("Peripheral", "Advertising ID = " + String.valueOf(myRandomNumber));
         client.start(myRandomNumber);
         server.start(b.array());
 
