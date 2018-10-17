@@ -110,10 +110,9 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         mGattServer.addService(createUartService());
     }
 
-    public void start(){
-        startLeAdvertising();
+    public void start() {
+        start(new byte[0]);
     }
-
     public void start(byte [] advData) {
         startLeAdvertising(advData);
     }
@@ -246,7 +245,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
                 .setIncludeDeviceName(false)
                 .setIncludeTxPowerLevel(false)
                 .addServiceUuid(new ParcelUuid(UART_UUID))
-                .addServiceData(new ParcelUuid(BLUENET_SERVICE_UUID),extraData)
+                .addServiceData(new ParcelUuid(UART_UUID),extraData)
                 .build();
 
         //get an advertiser object

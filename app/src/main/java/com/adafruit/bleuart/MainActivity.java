@@ -12,10 +12,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.CompoundButton;
 import android.widget.Switch;
-
-import java.lang.Thread;
 
 public class MainActivity extends Activity implements UartBase.HostCallback {
 
@@ -90,22 +87,10 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
 
         Bundle receiveBundle = this.getIntent().getExtras();
         final int role = receiveBundle.getInt("role");
-        uart = new DualRoleBluetoothLeUart(getApplicationContext(), role);
 
-        switch(role) {
-            case RoleChooser.CENTRAL:
-                writeLine("I am a central!");
-                writeLine("Scanning for devices ...");
-                break;
-            case RoleChooser.PERIPHERAL:
-                writeLine("I am a peripheral!");
-                writeLine("Advertising device ...");
-                break;
-            case RoleChooser.BRIDGE:
-                break;
-            case RoleChooser.AUTO:
-                break;
-        }
+        uart = new DualRoleBluetoothLeUart(getApplicationContext());
+
+        writeLine("Starting!");
 
         // Disable the send button until we're connected.
         send = (Button)findViewById(R.id.send);

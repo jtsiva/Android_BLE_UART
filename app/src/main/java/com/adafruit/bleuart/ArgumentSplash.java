@@ -9,8 +9,9 @@ import android.os.Bundle;
 import android.content.Intent;
 import android.view.View;
 import android.Manifest;
+import android.widget.EditText;
 
-public class RoleChooser extends Activity {
+public class ArgumentSplash extends Activity {
 
     final static int CENTRAL = 0;
     final static int PERIPHERAL = 1;
@@ -20,7 +21,7 @@ public class RoleChooser extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_role_chooser);
+        setContentView(R.layout.activity_argument_splash);
 
         checkPermissions();
     }
@@ -57,19 +58,18 @@ public class RoleChooser extends Activity {
 
     }
 
-    public void setCentral(View view) {
-        kickOffMain(CENTRAL);
+    public void parseArguments(View view) {
+        EditText args = (EditText)findViewById(R.id.args);
+        //parse things
+
+        kickOffMain(0,0,0);
     }
 
-    public void setPeripheral(View view) {
-        kickOffMain(PERIPHERAL);
-    }
-
-    private void kickOffMain(int role) {
+    private void kickOffMain(int a, int b, int c) {
         Bundle sendBundle = new Bundle();
-        sendBundle.putInt("role", role);
+        sendBundle.putInt("role", a);
 
-        Intent i = new Intent(RoleChooser.this, MainActivity.class);
+        Intent i = new Intent(ArgumentSplash.this, MainActivity.class);
         i.putExtras(sendBundle);
         startActivity(i);
 

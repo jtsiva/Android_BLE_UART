@@ -3,6 +3,7 @@ package com.adafruit.bleuart;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import java.security.SecureRandom;
+import java.nio.ByteBuffer;
 
 public class DualRoleBluetoothLeUart implements UartBase {
     public static final int CENTRAL = 0;
@@ -70,5 +71,9 @@ public class DualRoleBluetoothLeUart implements UartBase {
     public void send(String data) {
         server.send(data);
         client.send(data);
+    }
+
+    public int getNumConnections(){
+        return server.getNumConnections() + client.getNumConnections();
     }
 }

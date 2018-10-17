@@ -118,7 +118,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     public boolean deviceInfoAvailable() { return disAvailable; }
 
     public int getNumConnections() {
-        return (gatt == null) ? 0 : 1;
+        return mConnectedDevices.size();
     }
 
     // Send data to connected UART device.
@@ -203,7 +203,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     }
 
     public void start(int myID) {
-        this.myID;
+        this.myID = myID;
         start();
     }
     public void start(){
@@ -425,9 +425,27 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
                 && !mDiscoveredDevices.contains(device)){
             // Notify registered callbacks of found device.
             Log.i("Central", "advertised: " + new String(scanRecord));
-                    
-            notifyOnDeviceFound(device);
-            mDiscoveredDevices.add(device);
+            if (myID > ByteBuffer.wrap(scanRecord).getInt()) {
+                notifyOnDeviceFound(device);
+                mDiscoveredDevices.add(device);
+            } else if (myID == ByteBuffer.wrap(scanRecord).getInt()) {
+                /*how do we handle?
+                    both sides re-roll IDs
+                    The old advertisement may be seen while new ID is set locally
+                        Old ID < new ID
+                            another device has ID < old -> consistent
+                            another device has ID == old -> other re-rolls
+                            another device has ID > old && < new -> both sides attempt to connect XXX
+                            another deivce has ID > new -> consistent
+                        old ID > new ID
+                            another device has ID < old && > new -> neither side connects XXX
+                            another device has ID == old -> other re-rolls
+                            another device has ID > old -> consistent
+                            another deivce has ID < new -> consistent
+
+                    possible solution: ignore all connection attempts for X advertisement iterations
+                */
+            }
         }
     }
 
