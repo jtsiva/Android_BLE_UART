@@ -90,17 +90,16 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
 
         Bundle receiveBundle = this.getIntent().getExtras();
         final int role = receiveBundle.getInt("role");
+        uart = new DualRoleBluetoothLeUart(getApplicationContext(), role);
 
         switch(role) {
             case RoleChooser.CENTRAL:
                 writeLine("I am a central!");
                 writeLine("Scanning for devices ...");
-                uart = new BluetoothLeUart(getApplicationContext());
                 break;
             case RoleChooser.PERIPHERAL:
                 writeLine("I am a peripheral!");
                 writeLine("Advertising device ...");
-                uart = new BluetoothLeUartServer(getApplicationContext());
                 break;
             case RoleChooser.BRIDGE:
                 break;
@@ -158,6 +157,7 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
     public void onConnected(UartBase uart) {
         // Called when UART device is connected and ready to send/receive data.
         writeLine("Connected!");
+
         // Enable the send button
         runOnUiThread(new Runnable() {
             @Override
@@ -213,6 +213,9 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
         // Called when a UART device is discovered (after calling startScan).
         writeLine("Found device : " + device.getAddress());
         writeLine("Waiting for a connection ...");
+        // automatically connecting now, but we could later allow choosing to connect
+        // from a list of devices
+        uart.connect(device);
     }
 
     @Override

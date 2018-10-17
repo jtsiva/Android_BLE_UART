@@ -19,8 +19,11 @@ import java.util.List;
 import java.util.Queue;
 import java.util.UUID;
 import java.util.WeakHashMap;
+import java.util.Map;
+import java.util.HashMap;
 import java.lang.String;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.Objects;
 
 import android.util.Log;
 
@@ -45,11 +48,14 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     private Context context;
     private WeakHashMap<UartBase.HostCallback, Object> callbacks = new WeakHashMap<UartBase.HostCallback, Object>();
     private BluetoothAdapter adapter;
-    private BluetoothGatt gatt;
+    private Map<String, BluetoothGatt> mConnectedDevices = new HashMap<String, BluetoothGatt>();
     private BluetoothGattCharacteristic tx;
     private BluetoothGattCharacteristic rx;
     private boolean connectFirst;
     private boolean writeInProgress; // Flag to indicate a write is currently in progress
+
+    private Set<BluetoothDevice> mDiscoveredDevices = new HashSet<BluetoothDevice>();
+
 
     // Device Information state.
     private BluetoothGattCharacteristic disManuf;
@@ -78,31 +84,25 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
         super();
         this.context = context;
         this.adapter = BluetoothAdapter.getDefaultAdapter();
-        this.gatt = null;
-        this.tx = null;
-        this.rx = null;
+
         this.disManuf = null;
         this.disModel = null;
         this.disHWRev = null;
         this.disSWRev = null;
         this.disAvailable = false;
         this.connectFirst = false;
-        this.writeInProgress = false;
+
         this.readQueue = new ConcurrentLinkedQueue<BluetoothGattCharacteristic>();
     }
 
-    // Return instance of BluetoothGatt.
-    public BluetoothGatt getGatt() {
-        return gatt;
-    }
 
     // Return true if connected to UART device, false otherwise.
     public boolean isConnected() {
-        return (tx != null && rx != null);
+        return (!mConnectedDevices.isEmpty());
     }
 
     public String getDeviceInfo() {
-        if (tx == null || !disAvailable ) {
+        if (!disAvailable ) {
             // Do nothing if there is no connection.
             return "";
         }
@@ -130,16 +130,29 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
 
         writeData.gatt.writeCharacteristic(characteristic);
     }
+    private void send (WriteData data) {
+        Log.i("gatt-client", "sending " + new String(data.data));
+        if (null != data) {
+            writeQueue.offer(data);
+            if (idle && !writeQueue.isEmpty()) {
+                WriteData writeData = writeQueue.poll();
+                doWrite(writeData);
+            }
+        }
+    }
 
-    // Send data to connected UART device.
+    // Send data to connected UART devices.
     public void send(byte[] data) {
+        Log.i("gatt-client", "sending " + new String(data));
         if (data == null || data.length == 0) {
             // Do nothing if there is no connection or message to send.
             return;
         }
 
-        //could expand to communicate to other periphs
-        writeQueue.offer(new WriteData(gatt, data));
+        for (Map.Entry<String, BluetoothGatt> entry : mConnectedDevices.entrySet()) {
+            //could expand to communicate to other periphs
+            writeQueue.offer(new WriteData(entry.getValue(), data));
+        }
 
         if (idle && !writeQueue.isEmpty()) {
             WriteData writeData = writeQueue.poll();
@@ -164,14 +177,20 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
         callbacks.remove(callback);
     }
 
+    public void connect(BluetoothDevice device) {
+        if (!mConnectedDevices.containsKey(device.getAddress())) {
+            device.connectGatt(context, false, this, BluetoothDevice.TRANSPORT_LE);
+        }
+    }
+
     // Disconnect to a device if currently connected.
     public void disconnect() {
-        if (gatt != null) {
-            gatt.disconnect();
+        for (Map.Entry<String, BluetoothGatt> entry : mConnectedDevices.entrySet()) {
+            //could expand to communicate to other periphs
+            entry.getValue().disconnect();
         }
-        gatt = null;
-        tx = null;
-        rx = null;
+
+        mConnectedDevices.clear();
     }
 
     // Stop any in progress UART device scan.
@@ -182,7 +201,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     }
 
     public void start(){
-        connectFirstAvailable();
+        startScan();
     }
 
     public void stop() {
@@ -194,7 +213,10 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     public void startScan() {
         if (adapter != null) {
             adapter.startLeScan(this);
+        } else {
+            Log.i("Central", "FAILED TO START SCAN");
         }
+
     }
 
     // Connect to the first available UART device.
@@ -214,6 +236,8 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
         super.onConnectionStateChange(gatt, status, newState);
         if (newState == BluetoothGatt.STATE_CONNECTED) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
+                mConnectedDevices.put(gatt.getDevice().getAddress(), gatt);
+
                 // Connected to device, start discovering services.
                 if (!gatt.discoverServices()) {
                     // Error starting service discovery.
@@ -228,8 +252,8 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
         }
         else if (newState == BluetoothGatt.STATE_DISCONNECTED) {
             // Disconnected, notify callbacks of disconnection.
-            rx = null;
-            tx = null;
+            mConnectedDevices.remove(gatt.getDevice().getAddress());
+
             notifyOnDisconnected(this);
         }
     }
@@ -246,10 +270,17 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
             Log.e("", "onServicesDiscovered gatt success");
         }
 
+        BluetoothDevice device = gatt.getDevice();
+        String address = device.getAddress();
+        final BluetoothGatt bluetoothGatt = mConnectedDevices.get(address);
 
-        // Save reference to each UART characteristic.
-        tx = gatt.getService(UART_UUID).getCharacteristic(TX_UUID);
-        rx = gatt.getService(UART_UUID).getCharacteristic(RX_UUID);
+        //reference to each UART characteristic
+        if (null == bluetoothGatt.getService(UART_UUID)) {
+            connectFailure();
+            Log.e("", "onServicesDiscovered gatt failure");
+            return;
+        }
+        BluetoothGattCharacteristic rx = bluetoothGatt.getService(UART_UUID).getCharacteristic(RX_UUID);
 
         // Save reference to each DIS characteristic.
         if (null != gatt.getService(DIS_UUID)) {
@@ -277,7 +308,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
 
         // Setup notifications on RX characteristic changes (i.e. data received).
         // First call setCharacteristicNotification to enable notification.
-        if (!gatt.setCharacteristicNotification(rx, true)) {
+        if (!bluetoothGatt.setCharacteristicNotification(rx, true)) {
             // Stop if the characteristic notification setup failed.
             connectFailure();
             Log.e("", "onServicesDiscovered notification setup failed");
@@ -292,14 +323,14 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
             return;
         }
         desc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-        if (!gatt.writeDescriptor(desc)) {
+        if (!bluetoothGatt.writeDescriptor(desc)) {
             // Stop if the client descriptor could not be written.
             connectFailure();
             Log.e("", "onServicesDiscovered descriptor could not be written");
             return;
         }
         // Notify of connection completion.
-        notifyOnConnected(this);
+
     }
 
     @Override
@@ -307,6 +338,8 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
                                   BluetoothGattDescriptor descriptor, int status) {
         if (status == BluetoothGatt.GATT_SUCCESS) {
             Log.w("Central", "Descriptor written!");
+            notifyOnConnected(this);
+            sendNeighborList(gatt);
         } else {
             Log.w("Central", "Descriptor NOT written!");
         }
@@ -322,13 +355,17 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
     public void onCharacteristicRead (BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
         super.onCharacteristicRead(gatt, characteristic, status);
 
+        BluetoothDevice device = gatt.getDevice();
+        String address = device.getAddress();
+        final BluetoothGatt bluetoothGatt = mConnectedDevices.get(address);
+
         if (status == BluetoothGatt.GATT_SUCCESS) {
             //Log.w("DIS", characteristic.getStringValue(0));
             // Check if there is anything left in the queue
             BluetoothGattCharacteristic nextRequest = readQueue.poll();
             if(nextRequest != null){
                 // Send a read request for the next item in the queue
-                gatt.readCharacteristic(nextRequest);
+                bluetoothGatt.readCharacteristic(nextRequest);
             }
             else {
                 // We've reached the end of the queue
@@ -347,16 +384,18 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
 
         if (status == BluetoothGatt.GATT_SUCCESS) {
             Log.d("BlueNet","Characteristic write successful");
-            WriteData writeData = writeQueue.poll();
 
-            if (null == writeData) { //empty!
-                idle = true;
-            } else {
-                doWrite(writeData);
-            }
 
         } else {
             Log.d("BlueNet","Characteristic write FAILED");
+        }
+
+        WriteData writeData = writeQueue.poll();
+
+        if (null == writeData) { //empty!
+            idle = true;
+        } else {
+            doWrite(writeData);
         }
 
     }
@@ -367,21 +406,46 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
         if (!parseUUIDs(scanRecord).contains(UART_UUID)) {
             return;
         }
-        // Notify registered callbacks of found device.
-        notifyOnDeviceFound(device);
+
         // Connect to first found device if required.
         if (connectFirst) {
+            // Notify registered callbacks of found device.
+            notifyOnDeviceFound(device);
             // Stop scanning for devices.
             stopScan();
             // Prevent connections to future found devices.
             connectFirst = false;
-            // Connect to device.
-            gatt = device.connectGatt(context, false, this, BluetoothDevice.TRANSPORT_LE);
+        }
+        else if (!mConnectedDevices.containsKey(device.getAddress())
+                && !mDiscoveredDevices.contains(device)){
+            // Notify registered callbacks of found device.
+            notifyOnDeviceFound(device);
+            mDiscoveredDevices.add(device);
         }
     }
 
+    private void sendNeighborList (BluetoothGatt target) {
+        //the first thing we want to do upon establishing a connection
+        //is send a list of our neighbors as:
+        //<addr1 addr2 addr3 ...>
+        String neighbors = new String();
+        neighbors = "<";
+        for (Map.Entry<String, BluetoothGatt> entry : mConnectedDevices.entrySet()) {
+            if (!Objects.equals(target.getDevice().getAddress(),
+                    entry.getValue().getDevice().getAddress())) {
+                neighbors += entry.getValue().getDevice().getAddress();
+                neighbors += " ";
+            }
+        }
+        neighbors += ">";
+        Log.i("gatt-client", neighbors);
+        if (2 < neighbors.length()) { //we have more in the string than <>
+            send(new WriteData(target, neighbors.getBytes(Charset.forName("UTF-8"))));
+        }
+    }
     // Private functions to simplify the notification of all callbacks of a certain event.
     private void notifyOnConnected(BluetoothLeUart uart) {
+
         for (UartBase.HostCallback cb : callbacks.keySet()) {
             if (cb != null) {
                 cb.onConnected(uart);
@@ -431,8 +495,6 @@ public class BluetoothLeUart extends BluetoothGattCallback implements BluetoothA
 
     // Notify callbacks of connection failure, and reset connection state.
     private void connectFailure() {
-        rx = null;
-        tx = null;
         notifyOnConnectFailed(this);
     }
 

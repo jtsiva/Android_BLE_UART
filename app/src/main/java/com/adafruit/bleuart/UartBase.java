@@ -17,6 +17,7 @@ public interface UartBase {
     public void registerCallback(UartBase.HostCallback callback);
     public void unregisterCallback(UartBase.HostCallback callback);
     public void start();
+    public void connect(BluetoothDevice device);
     public void disconnect();
     public void stop();
     public String getDeviceInfo();

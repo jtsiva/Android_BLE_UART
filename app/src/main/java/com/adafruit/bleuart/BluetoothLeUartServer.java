@@ -29,6 +29,7 @@ import java.util.Queue;
 import java.util.UUID;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.Objects;
 
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -111,6 +112,10 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
     public void start(){
         startLeAdvertising();
+    }
+
+    public void connect(BluetoothDevice device) {
+        //do nothing
     }
 
     public void disconnect() {
@@ -293,12 +298,39 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
                                              byte[] value) {
         super.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite,
                 responseNeeded, offset, value);
-        Log.i("Peripheral", "onCharacteristicWriteRequest " + characteristic.getUuid().toString());
+        boolean found = false;
+        //Log.i("Peripheral", "onCharacteristicWriteRequest " + characteristic.getUuid().toString());
         Log.i("Peripheral", new String(value));
-        //handle long writes?
-        //handle different receive queues
-        characteristic.setValue(value);
-        notifyOnReceive(this, characteristic);
+        String data = new String(value);
+        if (data.matches("<.*>")) { //we have a neighbor address update
+            data = data.replaceFirst("<", "");
+            Log.i("Peripheral", new String(data));
+            data = data.replaceFirst(">", "");
+            Log.i("Peripheral", new String(data));
+
+            String [] addresses = data.split("\\s");
+            BluetoothDevice temp = device;
+
+            for (int i = 0; i < addresses.length && !found; i++) {
+                //see if we are already connected to that device and ignore if found
+                for (BluetoothDevice dev : mRegisteredDevices) {
+                    if (Objects.equals(addresses[i], dev.getAddress()) && !found) {
+                        found = true;
+                    }
+                }
+            }
+            //we were sent an address of someone we don't know! Go tell someone!
+            if (!found) {
+                Log.i("Peripheral", "Found someone new!");
+                notifyOnDeviceFound(device); //pass a random device since it'll be ignored anyway
+            }
+        } else {
+            //handle long writes?
+            //handle different receive queues
+            characteristic.setValue(value);
+            notifyOnReceive(this, characteristic);
+        }
+
         if (responseNeeded) {
             mGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
         }

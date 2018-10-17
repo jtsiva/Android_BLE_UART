@@ -1,0 +1,74 @@
+package com.adafruit.bleuart;
+
+import android.bluetooth.BluetoothDevice;
+import android.content.Context;
+
+public class DualRoleBluetoothLeUart implements UartBase {
+    public static final int CENTRAL = 0;
+    public static final int PERIPHERAL = 1;
+    public static final int BRIDGE = 2;
+
+    private BluetoothLeUartServer server;
+    private BluetoothLeUart client;
+    private int gapRole;
+
+    public DualRoleBluetoothLeUart (Context context, int gapRole) {
+        server = new BluetoothLeUartServer (context);
+        client = new BluetoothLeUart (context);
+
+        this.gapRole = gapRole;
+    }
+
+    public void registerCallback(UartBase.HostCallback callback) {
+        server.registerCallback(callback);
+        client.registerCallback(callback);
+    }
+    public void unregisterCallback(UartBase.HostCallback callback){
+        server.unregisterCallback(callback);
+        client.unregisterCallback(callback);
+    }
+
+    public void start() {
+        //start either scanning or advertising
+        if (CENTRAL == this.gapRole) {
+            client.start();
+        }
+        else if (PERIPHERAL == this.gapRole) {
+            server.start();
+        }
+    }
+
+    public void connect(BluetoothDevice device) {
+        if (PERIPHERAL == this.gapRole) {
+            this.gapRole = BRIDGE; // should we switch to C or C + P?
+            client.start();//if we were a P then we want to try to discover the device on our own
+        } else {
+            client.connect(device);
+        }
+    }
+
+    public void disconnect() {
+        client.disconnect();
+    }
+
+    public void stop() {
+        //stop either scanning or advertising
+        if (CENTRAL == this.gapRole) {
+            client.stop();
+        }
+        else if (PERIPHERAL == this.gapRole) {
+            server.stop();
+        }
+    }
+    public String getDeviceInfo() {
+        return "";
+    }
+    public void send(byte[] data) {
+        server.send(data);
+        client.send(data);
+    }
+    public void send(String data) {
+        server.send(data);
+        client.send(data);
+    }
+}
