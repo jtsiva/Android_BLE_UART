@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.Objects;
 
 import android.util.Log;
+import android.os.Build;
 
 public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
 
@@ -104,10 +105,13 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
         this.mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
         //CHECK FOR BT 5 FEATURES
-        Log.i("BT-5", "2M PHY supported: " + String.valueOf(mBluetoothAdapter.isLe2MPhySupported()));
-        Log.i("BT-5", "Coded PHY supported: " + String.valueOf(mBluetoothAdapter.isLeCodedPhySupported()));
-        Log.i("BT-5", "Ext Adv supported: " + String.valueOf(mBluetoothAdapter.isLeExtendedAdvertisingSupported()));
-        Log.i("BT-5", "Periodic Adv supported: " + String.valueOf(mBluetoothAdapter.isLePeriodicAdvertisingSupported()));
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.N) {
+            Log.i("BT-5", "2M PHY supported: " + String.valueOf(mBluetoothAdapter.isLe2MPhySupported()));
+            Log.i("BT-5", "Coded PHY supported: " + String.valueOf(mBluetoothAdapter.isLeCodedPhySupported()));
+            Log.i("BT-5", "Ext Adv supported: " + String.valueOf(mBluetoothAdapter.isLeExtendedAdvertisingSupported()));
+            Log.i("BT-5", "Periodic Adv supported: " + String.valueOf(mBluetoothAdapter.isLePeriodicAdvertisingSupported()));
+        }
+
 
 
         this.disManuf = null;
