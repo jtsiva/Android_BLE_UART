@@ -36,10 +36,18 @@ import android.util.Log;
 public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
 
     // UUIDs for UART service and associated characteristics.
-    public static UUID UART_UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
-    private static UUID UART_DATA_UUID = UUID.fromString("00000001-0000-1000-8000-00805F9B34FB");
-    public static UUID TX_UUID   = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
-    public static UUID RX_UUID   = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
+    //The below UUIDs are defined by Nordic and are widely used by Nordic, mbed, and Adafruit
+    //(https://thejeshgn.com/2016/10/01/uart-over-bluetooth-low-energy/)
+//    public static UUID UART_UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
+//    public static UUID TX_UUID   = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E"); //from central
+//    public static UUID RX_UUID   = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E"); //to central
+
+    //As far as Android is concerned, all UUIDs must be built from this base:
+    //0000xxxx-0000-1000-8000-00805F9B34FB
+    //Which means we need the following
+    public static UUID UART_UUID = UUID.fromString("00000001-0000-1000-8000-00805F9B34FB");
+    public static UUID TX_UUID   = UUID.fromString("00000002-0000-1000-8000-00805F9B34FB"); //from central
+    public static UUID RX_UUID   = UUID.fromString("00000003-0000-1000-8000-00805F9B34FB"); //to central
 
     // UUID for the UART BTLE client characteristic which is necessary for notifications.
     public static UUID CLIENT_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
@@ -94,6 +102,13 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
         super();
         this.context = context;
         this.mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
+        //CHECK FOR BT 5 FEATURES
+        Log.i("BT-5", "2M PHY supported: " + String.valueOf(mBluetoothAdapter.isLe2MPhySupported()));
+        Log.i("BT-5", "Coded PHY supported: " + String.valueOf(mBluetoothAdapter.isLeCodedPhySupported()));
+        Log.i("BT-5", "Ext Adv supported: " + String.valueOf(mBluetoothAdapter.isLeExtendedAdvertisingSupported()));
+        Log.i("BT-5", "Periodic Adv supported: " + String.valueOf(mBluetoothAdapter.isLePeriodicAdvertisingSupported()));
+
 
         this.disManuf = null;
         this.disModel = null;
@@ -285,7 +300,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
 
             Log.i("Central", "advertised: " + result.toString());
 
-            byte[] data = result.getScanRecord().getServiceData(new ParcelUuid(UART_DATA_UUID));
+            byte[] data = result.getScanRecord().getServiceData(new ParcelUuid(UART_UUID));
             int id = ByteBuffer.wrap(data).getInt();
             if (myID > id) {
                 notifyOnDeviceFound(result.getDevice());
