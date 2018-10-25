@@ -110,6 +110,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
             Log.i("BT-5", "Coded PHY supported: " + String.valueOf(mBluetoothAdapter.isLeCodedPhySupported()));
             Log.i("BT-5", "Ext Adv supported: " + String.valueOf(mBluetoothAdapter.isLeExtendedAdvertisingSupported()));
             Log.i("BT-5", "Periodic Adv supported: " + String.valueOf(mBluetoothAdapter.isLePeriodicAdvertisingSupported()));
+            Log.i("BT-5", "Multi-Adv supported: " + String.valueOf(mBluetoothAdapter.isMultipleAdvertisementSupported()));
         }
 
 
