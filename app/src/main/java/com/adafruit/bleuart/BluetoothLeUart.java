@@ -280,7 +280,34 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
         }
     };
 
+    private long advCount = 0;
+    private long tsDiffInter = 0;
+    private long tsDiffTotal = 0;
+    private long lastTS = 0;
     private void handleResult(ScanResult result) {
+
+        if (1 == mLoggingOpt) {
+            long ts = result.getTimestampNanos();
+            long diff = 0;
+
+            advCount += 1;
+            if (0 == lastTS) {
+                lastTS = ts;
+            } else {
+                diff = ts - lastTS;
+                lastTS = ts;
+                tsDiffInter += diff;
+                tsDiffTotal += diff;
+
+                if (0 == advCount % 100) {
+                    Log.i("AdvInfo", "window avg: " + String.valueOf(tsDiffInter/100) + "     overall: " + String.valueOf(tsDiffTotal/advCount));
+                    tsDiffInter = 0;
+                }
+            }
+        }
+
+
+
         // Connect to first found device if required.
         if (connectFirst) {
             // Notify registered callbacks of found device.
@@ -522,6 +549,11 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
             doWrite(writeData);
         }
 
+    }
+
+    private int mLoggingOpt = 0;
+    public void setAdvLogging(int opt) {
+        mLoggingOpt = opt;
     }
 
     // Private functions to simplify the notification of all callbacks of a certain event.

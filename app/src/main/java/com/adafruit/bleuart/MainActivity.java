@@ -21,10 +21,9 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
     private EditText input;
     private Button   send;
     private CheckBox newline;
-    private Switch   role;
 
     // Bluetooth LE UART instance.  This is defined in BluetoothLeUart.java.
-    private UartBase uart;
+    private DualRoleBluetoothLeUart uart;
 
     // Write some text to the messages text view.
     // Care is taken to do this on the main UI thread so writeLine can be called from any thread
@@ -87,9 +86,10 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
         input = (EditText) findViewById(R.id.input);
 
         Bundle receiveBundle = this.getIntent().getExtras();
-        final int role = receiveBundle.getInt("role");
+        final int logging = receiveBundle.getInt("logging");
 
         uart = new DualRoleBluetoothLeUart(getApplicationContext());
+        uart.setOpts(logging, 0, 0);
 
         writeLine("Starting!");
 

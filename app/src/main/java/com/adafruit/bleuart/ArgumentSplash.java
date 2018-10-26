@@ -59,15 +59,26 @@ public class ArgumentSplash extends Activity {
     }
 
     public void parseArguments(View view) {
-        EditText args = (EditText)findViewById(R.id.args);
+        EditText field = (EditText)findViewById(R.id.args);
         //parse things
+        String args = field.getText().toString();
+        int a = 0;
+        int b = 0;
+        int c = 0;
 
-        kickOffMain(0,0,0);
+        if (args.toLowerCase().contains("--log-adv-t")) {
+            a = 1;
+        }
+
+
+        kickOffMain(a,b,c);
     }
 
     private void kickOffMain(int a, int b, int c) {
         Bundle sendBundle = new Bundle();
-        sendBundle.putInt("role", a);
+        sendBundle.putInt("logging", a);
+        sendBundle.putInt("this", b); //unused
+        sendBundle.putInt("that", c); //unused
 
         Intent i = new Intent(ArgumentSplash.this, MainActivity.class);
         i.putExtras(sendBundle);
