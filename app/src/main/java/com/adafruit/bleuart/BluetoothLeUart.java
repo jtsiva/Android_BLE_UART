@@ -35,11 +35,19 @@ import android.util.Log;
 
 public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
 
-    // UUIDs for UART service and associated characteristics.
-    public static UUID UART_UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
-    private static UUID UART_DATA_UUID = UUID.fromString("00000001-0000-1000-8000-00805F9B34FB");
-    public static UUID TX_UUID   = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E");
-    public static UUID RX_UUID   = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
+    //The below UUIDs are defined by Nordic and are widely used by Nordic, mbed, and Adafruit
+    //(https://thejeshgn.com/2016/10/01/uart-over-bluetooth-low-energy/)
+    //    public static UUID UART_UUID = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
+    //    public static UUID TX_UUID   = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E"); //from central
+    //    public static UUID RX_UUID   = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E"); //to central
+
+    //As far as Android is concerned, all UUIDs must be built from this base:
+    //0000xxxx-0000-1000-8000-00805F9B34FB
+    //Which means we need the following
+    public static UUID UART_UUID = UUID.fromString("00000001-0000-1000-8000-00805F9B34FB");
+    public static UUID TX_UUID   = UUID.fromString("00000002-0000-1000-8000-00805F9B34FB"); //from central
+    public static UUID RX_UUID   = UUID.fromString("00000003-0000-1000-8000-00805F9B34FB"); //to central
+
 
     // UUID for the UART BTLE client characteristic which is necessary for notifications.
     public static UUID CLIENT_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
@@ -62,8 +70,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
     private boolean connectFirst;
     private boolean writeInProgress; // Flag to indicate a write is currently in progress
 
-    private Set<BluetoothDevice> mDiscoveredDevices = new HashSet<BluetoothDevice>();
-
+    private Map<BluetoothDevice, Integer> mDiscoveredDevices = new HashMap<BluetoothDevice, Integer>();
 
     // Device Information state.
     private BluetoothGattCharacteristic disManuf;
@@ -278,35 +285,39 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
             // Prevent connections to future found devices.
             connectFirst = false;
         }
-        else if (!mConnectedDevices.containsKey(result.getDevice().getAddress())
-                && !mDiscoveredDevices.contains(result.getDevice())){
-            mDiscoveredDevices.add(result.getDevice());
-            // Notify registered callbacks of found device.
+        else if (!mConnectedDevices.containsKey(result.getDevice().getAddress())){
 
-            Log.i("Central", "advertised: " + result.toString());
 
-            byte[] data = result.getScanRecord().getServiceData(new ParcelUuid(UART_DATA_UUID));
+            byte[] data = result.getScanRecord().getServiceData(new ParcelUuid(UART_UUID));
             int id = ByteBuffer.wrap(data).getInt();
-            if (myID > id) {
-                notifyOnDeviceFound(result.getDevice());
 
-            } else if (myID == id) {
-                /*how do we handle?
-                    both sides re-roll IDs
-                    The old advertisement may be seen while new ID is set locally
-                        Old ID < new ID
-                            another device has ID < old -> consistent
-                            another device has ID == old -> other re-rolls
-                            another device has ID > old && < new -> both sides attempt to connect XXX
-                            another deivce has ID > new -> consistent
-                        old ID > new ID
-                            another device has ID < old && > new -> neither side connects XXX
-                            another device has ID == old -> other re-rolls
-                            another device has ID > old -> consistent
-                            another deivce has ID < new -> consistent
+            if (!mDiscoveredDevices.containsKey(result.getDevice())
+                    && !mDiscoveredDevices.containsValue(id)){
+                Log.i("Central", "advertised: " + result.toString());
+                mDiscoveredDevices.put(result.getDevice(), id);
 
-                    possible solution: ignore all connection attempts for X advertisement iterations
-                */
+                // Notify registered callbacks of found device.
+                if (myID > id) {
+                    notifyOnDeviceFound(result.getDevice());
+
+                } else if (myID == id) {
+                    /*how do we handle?
+                        both sides re-roll IDs
+                        The old advertisement may be seen while new ID is set locally
+                            Old ID < new ID
+                                another device has ID < old -> consistent
+                                another device has ID == old -> other re-rolls
+                                another device has ID > old && < new -> both sides attempt to connect XXX
+                                another deivce has ID > new -> consistent
+                            old ID > new ID
+                                another device has ID < old && > new -> neither side connects XXX
+                                another device has ID == old -> other re-rolls
+                                another device has ID > old -> consistent
+                                another deivce has ID < new -> consistent
+
+                        possible solution: ignore all connection attempts for X advertisement iterations
+                    */
+                }
             }
         }
     }
