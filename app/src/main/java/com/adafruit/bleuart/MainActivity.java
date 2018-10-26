@@ -45,16 +45,17 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
         String message = input.getText().toString();
         input.setText("");
 
-        // We can only send 20 bytes per packet, so break longer messages
-        // up into 20 byte payloads
+        // We can only send (mtu - 3) bytes per packet, so break longer messages
+        // up into (mtu - 3) byte payloads
         int len = message.length();
         int pos = 0;
+        int mtu = uart.getMtu() - 3;
         while(len != 0) {
             stringBuilder.setLength(0);
-            if (len>=20) {
-                stringBuilder.append(message.toCharArray(), pos, 20 );
-                len-=20;
-                pos+=20;
+            if (len>=mtu) {
+                stringBuilder.append(message.toCharArray(), pos, mtu );
+                len-= mtu;
+                pos+= mtu;
             }
             else {
                 stringBuilder.append(message.toCharArray(), pos, len);

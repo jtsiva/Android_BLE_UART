@@ -69,6 +69,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
     private BluetoothGattCharacteristic rx;
     private boolean connectFirst;
     private boolean writeInProgress; // Flag to indicate a write is currently in progress
+    private int mMtu = 512;
 
     private Map<BluetoothDevice, Integer> mDiscoveredDevices = new HashMap<BluetoothDevice, Integer>();
 
@@ -221,6 +222,10 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
 
     public void stop() {
         stopLeScan();
+    }
+
+    public int getMtu() {
+        return mMtu;
     }
 
     private void startLeScan(){
@@ -441,11 +446,28 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
                                   BluetoothGattDescriptor descriptor, int status) {
         if (status == BluetoothGatt.GATT_SUCCESS) {
             Log.w("Central", "Descriptor written!");
+
+            BluetoothDevice device = gatt.getDevice();
+            String address = device.getAddress();
+            final BluetoothGatt bluetoothGatt = mConnectedDevices.get(address);
+
+            bluetoothGatt.requestMtu(512);
+
             notifyOnConnected(this);
         } else {
             Log.w("Central", "Descriptor NOT written!");
         }
     }
+
+    @Override
+    public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
+        if (status == BluetoothGatt.GATT_SUCCESS) {
+            Log.i("Gatt", "MTU set to: " + String.valueOf(mtu));
+            mMtu = mtu < mMtu ? mtu : mMtu;
+        }
+
+    }
+
 
     @Override
     public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {

@@ -78,4 +78,8 @@ public class DualRoleBluetoothLeUart implements UartBase {
     public int getNumConnections(){
         return server.getNumConnections() + client.getNumConnections();
     }
+
+    public int getMtu() {
+        return server.getMtu() <= client.getMtu() ? server.getMtu() : client.getMtu();
+    }
 }

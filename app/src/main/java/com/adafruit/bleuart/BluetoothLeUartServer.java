@@ -90,7 +90,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     private BluetoothLeAdvertiser mBluetoothLeAdvertiser;
     private Set<BluetoothDevice> mRegisteredDevices = new HashSet();
 
-
+    private int mMtu = 512;
     // Queues for characteristic write (synchronous)
     private Queue<WriteData> writeQueue = new ConcurrentLinkedQueue<WriteData>();
     private boolean idle = true;
@@ -168,6 +168,10 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
     public int getNumConnections() {
         return mRegisteredDevices.size();
+    }
+
+    public int getMtu() {
+        return mMtu;
     }
 
     public void doNotify (WriteData writeData) {
@@ -397,6 +401,14 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         else {
             Log.i("BlueNet", String.format("Failure: %d", status));
         }
+    }
+
+    @Override
+    public void onMtuChanged (BluetoothDevice device, int mtu) {
+
+        Log.i("Gatt", "MTU set to: " + String.valueOf(mtu));
+        mMtu = mtu < mMtu ? mtu : mMtu;
+
     }
 
     // Private functions to simplify the notification of all callbacks of a certain event.

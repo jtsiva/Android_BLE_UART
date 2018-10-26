@@ -24,4 +24,5 @@ public interface UartBase {
     public void send(byte[] data);
     public void send(String data);
     public int getNumConnections();
+    public int getMtu();
 }
