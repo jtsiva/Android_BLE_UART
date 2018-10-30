@@ -15,6 +15,10 @@ import android.bluetooth.le.ScanSettings;
 import android.os.ParcelUuid;
 import android.content.Context;
 
+import java.io.IOException;
+import java.io.FileNotFoundException;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
@@ -87,6 +91,8 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
     private boolean idle = true;
 
     private int myID = 0;
+
+    File mOutFile = null;
 
     public class WriteData {
         public BluetoothGatt gatt;
@@ -285,6 +291,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
     private long tsDiffTotal = 0;
     private long lastTS = 0;
     private void handleResult(ScanResult result) {
+        FileOutputStream stream = null;
 
         if (1 == mLoggingOpt) {
             long ts = result.getTimestampNanos();
@@ -293,6 +300,14 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
             advCount += 1;
             if (0 == lastTS) {
                 lastTS = ts;
+                if (null != mOutFile) {
+                    try {
+                        stream = new FileOutputStream(mOutFile, false);
+                        stream.write("window avg    overall\n".getBytes());
+                        stream.close();
+                    } catch(IOException e) {
+                    }
+                }
             } else {
                 diff = ts - lastTS;
                 lastTS = ts;
@@ -301,6 +316,15 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
 
                 if (0 == advCount % 100) {
                     Log.i("AdvInfo", "window avg: " + String.valueOf(tsDiffInter/100) + "     overall: " + String.valueOf(tsDiffTotal/advCount));
+                    if (null != mOutFile) {
+
+                        try {
+                            stream = new FileOutputStream(mOutFile, true);
+                            stream.write((String.valueOf(tsDiffInter/100) + "\t" + String.valueOf(tsDiffTotal/advCount) + "\n").getBytes());
+                            stream.close();
+                        } catch (IOException e) {
+                        }
+                    }
                     tsDiffInter = 0;
                 }
             }
@@ -554,6 +578,10 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
     private int mLoggingOpt = 0;
     public void setAdvLogging(int opt) {
         mLoggingOpt = opt;
+
+        File path = context.getExternalFilesDir(null);
+        mOutFile = new File(path, "cap.txt");
+
     }
 
     // Private functions to simplify the notification of all callbacks of a certain event.
