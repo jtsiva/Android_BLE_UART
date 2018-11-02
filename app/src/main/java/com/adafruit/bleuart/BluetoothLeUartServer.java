@@ -13,6 +13,9 @@ import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.AdvertiseCallback;
 import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
+import android.bluetooth.le.AdvertisingSet;
+import android.bluetooth.le.AdvertisingSetParameters;
+import android.bluetooth.le.AdvertisingSetCallback;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.content.Context;
 import android.os.ParcelUuid;
@@ -37,6 +40,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.support.annotation.MainThread;
 
+import android.os.Build;
 import android.util.Log;
 import static android.bluetooth.BluetoothGattService.SERVICE_TYPE_PRIMARY;
 import static android.bluetooth.BluetoothGattService.SERVICE_TYPE_SECONDARY;
@@ -123,7 +127,12 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         start(new byte[0]);
     }
     public void start(byte [] advData) {
-        startLeAdvertising(advData);
+
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.N) {
+            startLeAdvertisingSet(advData);
+        } else {
+            startLeAdvertising(advData);
+        }
     }
 
     public void connect(BluetoothDevice device) {
@@ -147,7 +156,13 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     };
 
     public void stop(){
-        mBluetoothLeAdvertiser.stopAdvertising(mAdvertiseCallback);
+
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.N) {
+            mBluetoothLeAdvertiser.stopAdvertisingSet(mAdvSetCallback);
+        } else {
+            mBluetoothLeAdvertiser.stopAdvertising(mAdvertiseCallback);
+        }
+
     }
 
     // Register the specified callback to receive UART callbacks.
@@ -245,6 +260,51 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         service.addCharacteristic(rxChar);
 
         return service;
+    }
+    AdvertisingSetCallback mAdvSetCallback = new AdvertisingSetCallback () {
+        @Override
+        public void onAdvertisingSetStarted(AdvertisingSet advertisingSet, int txPower, int status) {
+            Log.i(INFO_TAG, "onAdvertisingSetStarted(): txPower:" + txPower + " , status: "
+                    + status);
+            //currentAdvertisingSet = advertisingSet;
+        }
+
+        @Override
+        public void onAdvertisingDataSet(AdvertisingSet advertisingSet, int status) {
+            Log.i(INFO_TAG, "onAdvertisingDataSet() :status:" + status);
+        }
+
+        @Override
+        public void onScanResponseDataSet(AdvertisingSet advertisingSet, int status) {
+            Log.i(INFO_TAG, "onScanResponseDataSet(): status:" + status);
+        }
+
+        @Override
+        public void onAdvertisingSetStopped(AdvertisingSet advertisingSet) {
+            Log.i(INFO_TAG, "onAdvertisingSetStopped():");
+        }
+    };
+
+    public void startLeAdvertisingSet(byte [] extraData) {
+        mBluetoothLeAdvertiser = mBluetoothAdapter.getBluetoothLeAdvertiser();
+
+        AdvertisingSetParameters parameters = (new AdvertisingSetParameters.Builder())
+                .setLegacyMode(true) // True by default, but set here as a reminder.
+                .setConnectable(true)
+                .setInterval(AdvertisingSetParameters.INTERVAL_HIGH)
+                .setTxPowerLevel(AdvertisingSetParameters.TX_POWER_HIGH)
+                .build();
+
+        //set of the advertising data to advertise the service!
+        AdvertiseData data = new AdvertiseData.Builder()
+                .setIncludeDeviceName(false)
+                .setIncludeTxPowerLevel(false)
+                .addServiceUuid(new ParcelUuid(UART_UUID))
+                .addServiceData(new ParcelUuid(UART_UUID),extraData)
+                .build();
+
+        mBluetoothLeAdvertiser.startAdvertisingSet(parameters, data,
+                null, null, null, mAdvSetCallback);
     }
 
     public void startLeAdvertising(byte [] extraData){
