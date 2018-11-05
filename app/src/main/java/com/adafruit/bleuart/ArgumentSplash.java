@@ -63,11 +63,15 @@ public class ArgumentSplash extends Activity {
         //parse things
         String args = field.getText().toString();
         int a = 0;
-        int b = 0;
+        int b = BRIDGE;
         int c = 0;
 
         if (args.toLowerCase().contains("--log-adv-t")) {
             a = 1;
+        } else if (args.toLowerCase().contains("--central")) {
+            b = CENTRAL;
+        } else if (args.toLowerCase().contains("--peripheral")) {
+            b = PERIPHERAL;
         }
 
 
@@ -77,7 +81,7 @@ public class ArgumentSplash extends Activity {
     private void kickOffMain(int a, int b, int c) {
         Bundle sendBundle = new Bundle();
         sendBundle.putInt("logging", a);
-        sendBundle.putInt("this", b); //unused
+        sendBundle.putInt("gapRole", b);
         sendBundle.putInt("that", c); //unused
 
         Intent i = new Intent(ArgumentSplash.this, MainActivity.class);

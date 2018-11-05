@@ -92,6 +92,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     private BluetoothGattServer mGattServer;
     private BluetoothAdapter mBluetoothAdapter;
     private BluetoothLeAdvertiser mBluetoothLeAdvertiser;
+    private AdvertisingSetCallback mAdvSetCallback;
     private Set<BluetoothDevice> mRegisteredDevices = new HashSet();
 
     private int mMtu = 512;
@@ -261,31 +262,37 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
         return service;
     }
-    AdvertisingSetCallback mAdvSetCallback = new AdvertisingSetCallback () {
-        @Override
-        public void onAdvertisingSetStarted(AdvertisingSet advertisingSet, int txPower, int status) {
-            Log.i(INFO_TAG, "onAdvertisingSetStarted(): txPower:" + txPower + " , status: "
-                    + status);
-            //currentAdvertisingSet = advertisingSet;
-        }
 
-        @Override
-        public void onAdvertisingDataSet(AdvertisingSet advertisingSet, int status) {
-            Log.i(INFO_TAG, "onAdvertisingDataSet() :status:" + status);
-        }
-
-        @Override
-        public void onScanResponseDataSet(AdvertisingSet advertisingSet, int status) {
-            Log.i(INFO_TAG, "onScanResponseDataSet(): status:" + status);
-        }
-
-        @Override
-        public void onAdvertisingSetStopped(AdvertisingSet advertisingSet) {
-            Log.i(INFO_TAG, "onAdvertisingSetStopped():");
-        }
-    };
 
     public void startLeAdvertisingSet(byte [] extraData) {
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.N) {
+            mAdvSetCallback = new AdvertisingSetCallback() {
+                @Override
+                public void onAdvertisingSetStarted(AdvertisingSet advertisingSet, int txPower, int status) {
+                    Log.i(INFO_TAG, "onAdvertisingSetStarted(): txPower:" + txPower + " , status: "
+                            + status);
+                    //currentAdvertisingSet = advertisingSet;
+                }
+
+                @Override
+                public void onAdvertisingDataSet(AdvertisingSet advertisingSet, int status) {
+                    Log.i(INFO_TAG, "onAdvertisingDataSet() :status:" + status);
+                }
+
+                @Override
+                public void onScanResponseDataSet(AdvertisingSet advertisingSet, int status) {
+                    Log.i(INFO_TAG, "onScanResponseDataSet(): status:" + status);
+                }
+
+                @Override
+                public void onAdvertisingSetStopped(AdvertisingSet advertisingSet) {
+                    Log.i(INFO_TAG, "onAdvertisingSetStopped():");
+                }
+            };
+        }
+
+
+
         mBluetoothLeAdvertiser = mBluetoothAdapter.getBluetoothLeAdvertiser();
 
         AdvertisingSetParameters parameters = (new AdvertisingSetParameters.Builder())

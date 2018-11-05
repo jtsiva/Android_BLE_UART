@@ -44,8 +44,14 @@ public class DualRoleBluetoothLeUart implements UartBase {
         ByteBuffer b = ByteBuffer.allocate(4);
         b.putInt(myRandomNumber);
         Log.i ("Peripheral", "Advertising ID = " + String.valueOf(myRandomNumber));
-        client.start(myRandomNumber);
-        server.start(b.array());
+
+        if (PERIPHERAL != gapRole) {
+            client.start(myRandomNumber);
+        }
+
+        if (CENTRAL != gapRole) {
+            server.start(b.array());
+        }
 
     }
 
@@ -59,20 +65,35 @@ public class DualRoleBluetoothLeUart implements UartBase {
 
     public void stop() {
         //stop scanning and advertising
-        client.stop();
-        server.stop();
+        if (PERIPHERAL != gapRole) {
+            client.stop();
+        }
+
+        if (CENTRAL != gapRole) {
+            server.stop();
+        }
 
     }
     public String getDeviceInfo() {
         return "";
     }
     public void send(byte[] data) {
-        server.send(data);
-        client.send(data);
+        if (PERIPHERAL != gapRole) {
+            server.send(data);
+        }
+
+        if (CENTRAL != gapRole) {
+            client.send(data);
+        }
     }
     public void send(String data) {
-        server.send(data);
-        client.send(data);
+        if (PERIPHERAL != gapRole) {
+            server.send(data);
+        }
+
+        if (CENTRAL != gapRole) {
+            client.send(data);
+        }
     }
 
     public int getNumConnections(){
@@ -83,7 +104,9 @@ public class DualRoleBluetoothLeUart implements UartBase {
         return server.getMtu() <= client.getMtu() ? server.getMtu() : client.getMtu();
     }
 
-    public void setOpts (int logging, int b, int c) {
+    public void setOpts (int logging, int role, int c) {
+
         client.setAdvLogging(logging);
+        gapRole = role;
     }
 }
