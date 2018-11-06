@@ -1,2 +1,2 @@
 #!/bin/bash
-adb shell dumpsys batterystats > ../data_v1/$1.zip
+adb bugreport  > ../data_v1/battery/$1.zip
