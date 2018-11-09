@@ -92,7 +92,9 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     private BluetoothGattServer mGattServer;
     private BluetoothAdapter mBluetoothAdapter;
     private BluetoothLeAdvertiser mBluetoothLeAdvertiser;
-    private AdvertisingSetCallback mAdvSetCallback;
+
+//  private AdvertisingSetCallback mAdvSetCallback;
+
     private Set<BluetoothDevice> mRegisteredDevices = new HashSet();
 
     private int mMtu = 512;
@@ -159,7 +161,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     public void stop(){
 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.N) {
-            mBluetoothLeAdvertiser.stopAdvertisingSet(mAdvSetCallback);
+           // mBluetoothLeAdvertiser.stopAdvertisingSet(mAdvSetCallback);
         } else {
             mBluetoothLeAdvertiser.stopAdvertising(mAdvertiseCallback);
         }
@@ -266,7 +268,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
     public void startLeAdvertisingSet(byte [] extraData) {
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.N) {
-            mAdvSetCallback = new AdvertisingSetCallback() {
+           /* mAdvSetCallback = new AdvertisingSetCallback() {
                 @Override
                 public void onAdvertisingSetStarted(AdvertisingSet advertisingSet, int txPower, int status) {
                     Log.i(INFO_TAG, "onAdvertisingSetStarted(): txPower:" + txPower + " , status: "
@@ -288,7 +290,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
                 public void onAdvertisingSetStopped(AdvertisingSet advertisingSet) {
                     Log.i(INFO_TAG, "onAdvertisingSetStopped():");
                 }
-            };
+            };*/
         }
 
 
@@ -310,8 +312,8 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
                 .addServiceData(new ParcelUuid(UART_UUID),extraData)
                 .build();
 
-        mBluetoothLeAdvertiser.startAdvertisingSet(parameters, data,
-                null, null, null, mAdvSetCallback);
+//        mBluetoothLeAdvertiser.startAdvertisingSet(parameters, data,
+//                null, null, null, mAdvSetCallback);
     }
 
     public void startLeAdvertising(byte [] extraData){

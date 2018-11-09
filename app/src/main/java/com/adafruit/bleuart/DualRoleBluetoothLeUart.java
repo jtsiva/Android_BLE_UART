@@ -43,13 +43,15 @@ public class DualRoleBluetoothLeUart implements UartBase {
         //start scanning and advertising
         ByteBuffer b = ByteBuffer.allocate(4);
         b.putInt(myRandomNumber);
-        Log.i ("Peripheral", "Advertising ID = " + String.valueOf(myRandomNumber));
+
 
         if (PERIPHERAL != gapRole) {
+            Log.i ("Central", "Scanning...");
             client.start(myRandomNumber);
         }
 
         if (CENTRAL != gapRole) {
+            Log.i ("Peripheral", "Advertising ID = " + String.valueOf(myRandomNumber));
             server.start(b.array());
         }
 
@@ -79,20 +81,20 @@ public class DualRoleBluetoothLeUart implements UartBase {
     }
     public void send(byte[] data) {
         if (PERIPHERAL != gapRole) {
-            server.send(data);
+            client.send(data);
         }
 
         if (CENTRAL != gapRole) {
-            client.send(data);
+            server.send(data);
         }
     }
     public void send(String data) {
         if (PERIPHERAL != gapRole) {
-            server.send(data);
+            client.send(data);
         }
 
         if (CENTRAL != gapRole) {
-            client.send(data);
+            server.send(data);
         }
     }
 
