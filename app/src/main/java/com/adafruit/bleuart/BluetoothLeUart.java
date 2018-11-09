@@ -353,7 +353,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
                 mDiscoveredDevices.put(result.getDevice(), id);
 
                 // Notify registered callbacks of found device.
-                if (true){//myID > id) {
+                if (myID > id) {
                     notifyOnDeviceFound(result.getDevice());
 
                 } else if (myID == id) {
