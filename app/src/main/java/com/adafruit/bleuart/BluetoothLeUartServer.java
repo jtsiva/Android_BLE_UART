@@ -299,7 +299,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
         AdvertisingSetParameters parameters = (new AdvertisingSetParameters.Builder())
                 .setLegacyMode(true) // True by default, but set here as a reminder.
-                .setConnectable(true)
+                .setConnectable(false)
                 .setInterval(AdvertisingSetParameters.INTERVAL_HIGH)
                 .setTxPowerLevel(AdvertisingSetParameters.TX_POWER_HIGH)
                 .build();
