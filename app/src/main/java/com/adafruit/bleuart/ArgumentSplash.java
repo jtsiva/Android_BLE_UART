@@ -68,7 +68,9 @@ public class ArgumentSplash extends Activity {
 
         if (args.toLowerCase().contains("--log-adv-t")) {
             a = 1;
-        } else if (args.toLowerCase().contains("--central")) {
+        }
+
+        if (args.toLowerCase().contains("--central")) {
             b = CENTRAL;
         } else if (args.toLowerCase().contains("--peripheral")) {
             b = PERIPHERAL;
