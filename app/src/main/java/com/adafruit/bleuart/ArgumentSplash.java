@@ -18,6 +18,8 @@ public class ArgumentSplash extends Activity {
     final static int BRIDGE = 2;
     final static int AUTO = 3;
 
+    final static int CONNECTABLE = 1;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -76,6 +78,10 @@ public class ArgumentSplash extends Activity {
             b = PERIPHERAL;
         }
 
+        if (args.toLowerCase().contains("--connectable")) {
+            c = CONNECTABLE;
+        }
+
 
         kickOffMain(a,b,c);
     }
@@ -84,7 +90,7 @@ public class ArgumentSplash extends Activity {
         Bundle sendBundle = new Bundle();
         sendBundle.putInt("logging", a);
         sendBundle.putInt("gapRole", b);
-        sendBundle.putInt("that", c); //unused
+        sendBundle.putInt("connectable", c);
 
         Intent i = new Intent(ArgumentSplash.this, MainActivity.class);
         i.putExtras(sendBundle);

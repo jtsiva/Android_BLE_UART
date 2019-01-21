@@ -92,6 +92,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     private BluetoothGattServer mGattServer;
     private BluetoothAdapter mBluetoothAdapter;
     private BluetoothLeAdvertiser mBluetoothLeAdvertiser;
+    private boolean mConnectable = false;
 
 //  private AdvertisingSetCallback mAdvSetCallback;
 
@@ -136,6 +137,10 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         } else {
             startLeAdvertising(advData);
         }
+    }
+
+    public void setConnectable(int c) {
+        mConnectable = (c == ArgumentSplash.CONNECTABLE);
     }
 
     public void connect(BluetoothDevice device) {
@@ -299,7 +304,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
         AdvertisingSetParameters parameters = (new AdvertisingSetParameters.Builder())
                 .setLegacyMode(true) // True by default, but set here as a reminder.
-                .setConnectable(false)
+                .setConnectable(mConnectable)
                 .setInterval(AdvertisingSetParameters.INTERVAL_HIGH)
                 .setTxPowerLevel(AdvertisingSetParameters.TX_POWER_HIGH)
                 .build();
@@ -320,7 +325,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
         AdvertiseSettings settings = new AdvertiseSettings.Builder()
                 .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY) //3 modes: LOW_POWER, BALANCED, LOW_LATENCY
-                .setConnectable(false)
+                .setConnectable(mConnectable)
                 .setTimeout(0)
                 .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH) // ULTRA_LOW, LOW, MEDIUM, HIGH
                 .build();

@@ -75,6 +75,8 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
     private boolean writeInProgress; // Flag to indicate a write is currently in progress
     private int mMtu = 512;
 
+    private boolean mConnectable = false;
+
     private Map<BluetoothDevice, Integer> mDiscoveredDevices = new HashMap<BluetoothDevice, Integer>();
 
     // Device Information state.
@@ -117,6 +119,10 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
         this.connectFirst = false;
 
         this.readQueue = new ConcurrentLinkedQueue<BluetoothGattCharacteristic>();
+    }
+
+    public void setConnectable(int c) {
+        mConnectable = (c == ArgumentSplash.CONNECTABLE);
     }
 
 
@@ -354,7 +360,9 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
 
                 // Notify registered callbacks of found device.
                 if (myID > id) {
-                    notifyOnDeviceFound(result.getDevice());
+                    if (mConnectable) {
+                        notifyOnDeviceFound(result.getDevice());
+                    }
 
                 } else if (myID == id) {
                     /*how do we handle?
