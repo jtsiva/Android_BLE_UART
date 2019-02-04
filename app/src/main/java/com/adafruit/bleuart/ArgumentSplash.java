@@ -83,7 +83,7 @@ public class ArgumentSplash extends Activity {
             c = CONNECTABLE;
         }
 
-        if (args.toLowerCase().contains("--adv-interval")) {
+        if (args.toLowerCase().contains("--advInterval")) {
             advInterval = 1;
         }
 

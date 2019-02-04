@@ -142,6 +142,8 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     }
 
     public void setConnectable(int c) {
+
+        Log.v(INFO_TAG, "WE SET TO CONNECTABLE");
         mConnectable = (c == ArgumentSplash.CONNECTABLE);
     }
 
