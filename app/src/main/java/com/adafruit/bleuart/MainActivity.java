@@ -89,9 +89,10 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
         final int logging = receiveBundle.getInt("logging");
         final int role = receiveBundle.getInt("gapRole");
         final int connectable = receiveBundle.getInt("connectable");
+        final int advInterval = receiveBundle.getInt("advInterval");
 
         uart = new DualRoleBluetoothLeUart(getApplicationContext());
-        uart.setOpts(logging, role, connectable);
+        uart.setOpts(logging, role, connectable, advInterval);
 
         writeLine("Starting!");
 

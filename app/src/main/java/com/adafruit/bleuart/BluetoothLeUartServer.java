@@ -103,6 +103,8 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     private Queue<WriteData> writeQueue = new ConcurrentLinkedQueue<WriteData>();
     private boolean idle = true;
 
+    private int advertisingInterval;
+
     public class WriteData {
         public BluetoothDevice device;
         byte [] data;
@@ -141,6 +143,11 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
     public void setConnectable(int c) {
         mConnectable = (c == ArgumentSplash.CONNECTABLE);
+    }
+
+    public void setAdvertisingInterval(int advInterval) {
+        this.advertisingInterval = advInterval;
+        Log.v(INFO_TAG, "WE SET THE ADVERTISING INTERVAL");
     }
 
     public void connect(BluetoothDevice device) {
@@ -323,6 +330,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
     public void startLeAdvertising(byte [] extraData){
 
+        //TODO: swap out advertising interval for arg
         AdvertiseSettings settings = new AdvertiseSettings.Builder()
                 .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY) //3 modes: LOW_POWER, BALANCED, LOW_LATENCY
                 .setConnectable(mConnectable)

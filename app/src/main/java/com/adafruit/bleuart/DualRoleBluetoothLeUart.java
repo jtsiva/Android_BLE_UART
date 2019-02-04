@@ -106,11 +106,14 @@ public class DualRoleBluetoothLeUart implements UartBase {
         return server.getMtu() <= client.getMtu() ? server.getMtu() : client.getMtu();
     }
 
-    public void setOpts (int logging, int role, int connectable) {
+    public void setOpts (int logging, int role, int connectable, int advInterval) {
 
         client.setAdvLogging(logging);
         gapRole = role;
+
         server.setConnectable(connectable);
+        server.setAdvertisingInterval(advInterval);
+
         client.setConnectable(connectable);
     }
 }

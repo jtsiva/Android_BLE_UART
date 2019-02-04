@@ -67,6 +67,7 @@ public class ArgumentSplash extends Activity {
         int a = 0;
         int b = BRIDGE;
         int c = 0;
+        int advInterval = 0;
 
         if (args.toLowerCase().contains("--log-adv-t")) {
             a = 1;
@@ -82,15 +83,20 @@ public class ArgumentSplash extends Activity {
             c = CONNECTABLE;
         }
 
+        if (args.toLowerCase().contains("--adv-interval")) {
+            advInterval = 1;
+        }
 
-        kickOffMain(a,b,c);
+
+        kickOffMain(a,b,c, advInterval);
     }
 
-    private void kickOffMain(int a, int b, int c) {
+    private void kickOffMain(int a, int b, int c, int advInterval) {
         Bundle sendBundle = new Bundle();
         sendBundle.putInt("logging", a);
         sendBundle.putInt("gapRole", b);
         sendBundle.putInt("connectable", c);
+        sendBundle.putInt("advInterval", advInterval);
 
         Intent i = new Intent(ArgumentSplash.this, MainActivity.class);
         i.putExtras(sendBundle);
