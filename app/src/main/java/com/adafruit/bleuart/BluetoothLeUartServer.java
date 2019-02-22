@@ -104,6 +104,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     private boolean idle = true;
 
     private int advertisingInterval;
+    private int scanSetting;
 
     public class WriteData {
         public BluetoothDevice device;
@@ -143,13 +144,18 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
     public void setConnectable(int c) {
 
-        Log.v(INFO_TAG, "WE SET TO CONNECTABLE");
+        Log.i(INFO_TAG, "WE SET TO CONNECTABLE");
         mConnectable = (c == ArgumentSplash.CONNECTABLE);
     }
 
     public void setAdvertisingInterval(int advInterval) {
         this.advertisingInterval = advInterval;
-        Log.v(INFO_TAG, "WE SET THE ADVERTISING INTERVAL");
+        Log.i(INFO_TAG, "WE SET THE ADVERTISING INTERVAL");
+    }
+
+    public void setScanSetting(int scanSetting) {
+        this.scanSetting = scanSetting;
+        Log.i(INFO_TAG, "WE SET THE SCAN SETTING");
     }
 
     public void connect(BluetoothDevice device) {

@@ -7,9 +7,15 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.content.Intent;
+import android.util.Log;
 import android.view.View;
 import android.Manifest;
 import android.widget.EditText;
+
+// util and lang used for CL parser
+import java.lang.reflect.Array;
+import java.util.*;
+import java.lang.reflect.Field;
 
 public class ArgumentSplash extends Activity {
 
@@ -62,41 +68,61 @@ public class ArgumentSplash extends Activity {
 
     public void parseArguments(View view) {
         EditText field = (EditText)findViewById(R.id.args);
-        //parse things
         String args = field.getText().toString();
-        int a = 0;
-        int b = BRIDGE;
-        int c = 0;
+        String[] arrayArgs = args.split(" ");
+        int logAdvTime = 0;
+        int bridge = BRIDGE;
+        int connection = 0;
         int advInterval = 0;
+        int scanSetting = 0;
+        CliArgs cliArgs = new CliArgs(arrayArgs);
 
-        if (args.toLowerCase().contains("--log-adv-t")) {
-            a = 1;
+        boolean isConnectable = cliArgs.switchPresent("--connectable");
+        boolean isCentral = cliArgs.switchPresent("--central");
+        boolean isPeripheral = cliArgs.switchPresent("--peripheral");
+        boolean isAdvInterval = cliArgs.switchPresent("--advInterval");
+        boolean isLogAdvTime = cliArgs.switchPresent("--log-adv-t");
+        boolean isScanSetting = cliArgs.switchPresent("--scanSetting");
+
+        double logAdvTimeDouble = 0;
+        double advIntervalDouble = 0;
+        double scanSettingDouble = 0;
+
+        if (isConnectable)
+            connection = CONNECTABLE;
+
+        if (isCentral)
+            bridge = CENTRAL;
+
+        else if (isPeripheral)
+            bridge = PERIPHERAL;
+
+        if (isLogAdvTime) {
+            logAdvTimeDouble = cliArgs.switchDoubleValue("--log-adv-t");
+            logAdvTime = (int) logAdvTimeDouble;
         }
 
-        if (args.toLowerCase().contains("--central")) {
-            b = CENTRAL;
-        } else if (args.toLowerCase().contains("--peripheral")) {
-            b = PERIPHERAL;
+        if (isAdvInterval) {
+            advIntervalDouble = cliArgs.switchDoubleValue("--advInterval");
+            advInterval = (int) advIntervalDouble;
         }
 
-        if (args.toLowerCase().contains("--connectable")) {
-            c = CONNECTABLE;
+        if (isScanSetting) {
+            scanSettingDouble = cliArgs.switchDoubleValue("--scanSetting");
+            scanSetting = (int) scanSettingDouble;
         }
 
-        if (args.toLowerCase().contains("--advInterval")) {
-            advInterval = 1;
-        }
+        kickOffMain(logAdvTime, bridge, connection, advInterval, scanSetting);
 
-
-        kickOffMain(a,b,c, advInterval);
     }
 
-    private void kickOffMain(int a, int b, int c, int advInterval) {
+    private void kickOffMain(int logAdvTime, int bridge, int connection, int advInterval, int scanSetting) {
         Bundle sendBundle = new Bundle();
-        sendBundle.putInt("logging", a);
-        sendBundle.putInt("gapRole", b);
-        sendBundle.putInt("connectable", c);
+        sendBundle.putInt("logging", logAdvTime);
+        sendBundle.putInt("gapRole", bridge);
+        sendBundle.putInt("connectable", connection);
         sendBundle.putInt("advInterval", advInterval);
+        sendBundle.putInt("scanSetting", scanSetting);
 
         Intent i = new Intent(ArgumentSplash.this, MainActivity.class);
         i.putExtras(sendBundle);
