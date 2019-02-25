@@ -93,6 +93,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
     private boolean idle = true;
 
     private int myID = 0;
+    private int scanSetting;
 
     File mOutFile = null;
 
@@ -125,6 +126,10 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
         mConnectable = (c == ArgumentSplash.CONNECTABLE);
     }
 
+    public void setScanSetting(int scanSetting) {
+        this.scanSetting = scanSetting;
+        Log.i(INFO_TAG, "WE SET THE SCAN SETTING");
+    }
 
     // Return true if connected to UART device, false otherwise.
     public boolean isConnected() {
@@ -253,7 +258,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
         //scan settings
         ScanSettings settings = new ScanSettings.Builder()
                 //.setReportDelay(0) //0: no delay; >0: queue up
-                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY) //LOW_POWER, BALANCED, LOW_LATENCY
+                .setScanMode(this.scanSetting) //LOW_POWER, BALANCED, LOW_LATENCY
                 .build();
 
         mBluetoothLeScanner = mBluetoothAdapter.getBluetoothLeScanner();
@@ -326,7 +331,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
 
                         try {
                             stream = new FileOutputStream(mOutFile, true);
-                            stream.write((String.valueOf(tsDiffInter/100) + "\t" + String.valueOf(tsDiffTotal/advCount) + "\n").getBytes());
+                            stream.write((String.valueOf(tsDiffInter/100) + "\t" + String.valueOf(tsDiffTotal/advCount) + "\t" + String.valueOf(advCount) + "\n").getBytes());
                             stream.close();
                         } catch (IOException e) {
                         }

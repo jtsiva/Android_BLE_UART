@@ -104,7 +104,6 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     private boolean idle = true;
 
     private int advertisingInterval;
-    private int scanSetting;
 
     public class WriteData {
         public BluetoothDevice device;
@@ -151,11 +150,6 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     public void setAdvertisingInterval(int advInterval) {
         this.advertisingInterval = advInterval;
         Log.i(INFO_TAG, "WE SET THE ADVERTISING INTERVAL");
-    }
-
-    public void setScanSetting(int scanSetting) {
-        this.scanSetting = scanSetting;
-        Log.i(INFO_TAG, "WE SET THE SCAN SETTING");
     }
 
     public void connect(BluetoothDevice device) {
@@ -320,7 +314,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         AdvertisingSetParameters parameters = (new AdvertisingSetParameters.Builder())
                 .setLegacyMode(true) // True by default, but set here as a reminder.
                 .setConnectable(mConnectable)
-                .setInterval(AdvertisingSetParameters.INTERVAL_HIGH)
+                .setInterval(this.advertisingInterval)
                 .setTxPowerLevel(AdvertisingSetParameters.TX_POWER_HIGH)
                 .build();
 
@@ -340,7 +334,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
         //TODO: swap out advertising interval for arg
         AdvertiseSettings settings = new AdvertiseSettings.Builder()
-                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY) //3 modes: LOW_POWER, BALANCED, LOW_LATENCY
+                .setAdvertiseMode(this.advertisingInterval) //3 modes: LOW_POWER, BALANCED, LOW_LATENCY
                 .setConnectable(mConnectable)
                 .setTimeout(0)
                 .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH) // ULTRA_LOW, LOW, MEDIUM, HIGH

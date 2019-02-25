@@ -71,7 +71,7 @@ public class ArgumentSplash extends Activity {
         String args = field.getText().toString();
         String[] arrayArgs = args.split(" ");
         int logAdvTime = 0;
-        int bridge = BRIDGE;
+        int role = BRIDGE;
         int connection = 0;
         int advInterval = 0;
         int scanSetting = 0;
@@ -112,7 +112,7 @@ public class ArgumentSplash extends Activity {
             scanSetting = (int) scanSettingDouble;
         }
 
-        kickOffMain(logAdvTime, bridge, connection, advInterval, scanSetting);
+        kickOffMain(logAdvTime, role, connection, advInterval, scanSetting);
 
     }
 
