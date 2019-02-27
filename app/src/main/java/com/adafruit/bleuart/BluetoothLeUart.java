@@ -94,6 +94,8 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
 
     private int myID = 0;
     private int scanSetting;
+    private int connInterval;
+    private int mtu;
 
     File mOutFile = null;
 
@@ -129,6 +131,16 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
     public void setScanSetting(int scanSetting) {
         this.scanSetting = scanSetting;
         Log.i(INFO_TAG, "WE SET THE SCAN SETTING");
+    }
+
+    public void setConnInterval(int connInterval) {
+        this.connInterval = connInterval;
+        Log.i(INFO_TAG, "WE SET THE CONNECTION INTERVAL");
+    }
+
+    public void setMtu(int mtu) {
+        this.mtu = mtu;
+        Log.i(INFO_TAG, "WE SET THE MTU");
     }
 
     // Return true if connected to UART device, false otherwise.
@@ -515,7 +527,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
             String address = device.getAddress();
             final BluetoothGatt bluetoothGatt = mConnectedDevices.get(address);
 
-            bluetoothGatt.requestMtu(512);
+            bluetoothGatt.requestMtu(this.mtu);
 
             notifyOnConnected(this);
         } else {
@@ -529,6 +541,11 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
             Log.i("Gatt", "MTU set to: " + String.valueOf(mtu));
             mMtu = mtu < mMtu ? mtu : mMtu;
         }
+
+        BluetoothDevice device = gatt.getDevice();
+        String address = device.getAddress();
+        final BluetoothGatt bluetoothGatt = mConnectedDevices.get(address);
+        bluetoothGatt.requestConnectionPriority(this.connInterval);
 
     }
 

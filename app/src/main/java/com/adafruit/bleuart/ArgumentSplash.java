@@ -75,6 +75,8 @@ public class ArgumentSplash extends Activity {
         int connection = 0;
         int advInterval = 0;
         int scanSetting = 0;
+        int connInterval = 0;
+        int mtu = 0;
         CliArgs cliArgs = new CliArgs(arrayArgs);
 
         boolean isConnectable = cliArgs.switchPresent("--connectable");
@@ -83,19 +85,23 @@ public class ArgumentSplash extends Activity {
         boolean isAdvInterval = cliArgs.switchPresent("--advInterval");
         boolean isLogAdvTime = cliArgs.switchPresent("--log-adv-t");
         boolean isScanSetting = cliArgs.switchPresent("--scanSetting");
+        boolean isConnInterval = cliArgs.switchPresent("--connInterval");
+        boolean isMtu = cliArgs.switchPresent("--mtu");
 
         double logAdvTimeDouble = 0;
         double advIntervalDouble = 0;
         double scanSettingDouble = 0;
+        double connIntervalDouble = 0;
+        double mtuDouble = 0;
 
         if (isConnectable)
             connection = CONNECTABLE;
 
         if (isCentral)
-            bridge = CENTRAL;
+            role = CENTRAL;
 
         else if (isPeripheral)
-            bridge = PERIPHERAL;
+            role = PERIPHERAL;
 
         if (isLogAdvTime) {
             logAdvTimeDouble = cliArgs.switchDoubleValue("--log-adv-t");
@@ -112,17 +118,30 @@ public class ArgumentSplash extends Activity {
             scanSetting = (int) scanSettingDouble;
         }
 
-        kickOffMain(logAdvTime, role, connection, advInterval, scanSetting);
+        if (isConnInterval) {
+            connIntervalDouble = cliArgs.switchDoubleValue("--connInterval");
+            connInterval = (int) connIntervalDouble;
+        }
+
+        if (isMtu) {
+            mtuDouble = cliArgs.switchDoubleValue("--mtu");
+            mtu = (int) mtuDouble;
+        }
+
+        kickOffMain(logAdvTime, role, connection, advInterval, scanSetting, connInterval, mtu);
 
     }
 
-    private void kickOffMain(int logAdvTime, int bridge, int connection, int advInterval, int scanSetting) {
+    private void kickOffMain(int logAdvTime, int role, int connection, int advInterval, int scanSetting, int connInterval, int mtu) {
         Bundle sendBundle = new Bundle();
         sendBundle.putInt("logging", logAdvTime);
-        sendBundle.putInt("gapRole", bridge);
+        sendBundle.putInt("gapRole", role);
         sendBundle.putInt("connectable", connection);
         sendBundle.putInt("advInterval", advInterval);
         sendBundle.putInt("scanSetting", scanSetting);
+        sendBundle.putInt("connInterval", connInterval);
+        sendBundle.putInt("mtu", mtu);
+
 
         Intent i = new Intent(ArgumentSplash.this, MainActivity.class);
         i.putExtras(sendBundle);
