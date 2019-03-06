@@ -130,17 +130,17 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
 
     public void setScanSetting(int scanSetting) {
         this.scanSetting = scanSetting;
-        Log.i(INFO_TAG, "WE SET THE SCAN SETTING");
+        Log.i("bleuart", "WE SET THE SCAN SETTING");
     }
 
     public void setConnInterval(int connInterval) {
         this.connInterval = connInterval;
-        Log.i(INFO_TAG, "WE SET THE CONNECTION INTERVAL");
+        Log.i("bleuart", "WE SET THE CONNECTION INTERVAL");
     }
 
     public void setMtu(int mtu) {
         this.mtu = mtu;
-        Log.i(INFO_TAG, "WE SET THE MTU");
+        Log.i("bleuart", "WE SET THE MTU");
     }
 
     // Return true if connected to UART device, false otherwise.
@@ -612,6 +612,12 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
         File path = context.getExternalFilesDir(null);
         mOutFile = new File(path, "cap.txt");
 
+    }
+
+    private int gattComm;
+    public void setGattComm (int gattComm) {
+        Log.i("bleuart", "Gatt comm type is " + String.valueOf(gattComm));
+        this.gattComm = gattComm;
     }
 
     // Private functions to simplify the notification of all callbacks of a certain event.

@@ -104,6 +104,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     private boolean idle = true;
 
     private int advertisingInterval;
+    private int gattComm;
 
     public class WriteData {
         public BluetoothDevice device;
@@ -134,8 +135,8 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     }
     public void start(byte [] advData) {
 
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.N) {
-            startLeAdvertisingSet(advData);
+        if (false/*Build.VERSION.SDK_INT > Build.VERSION_CODES.N*/) {
+            //startLeAdvertisingSet(advData);
         } else {
             startLeAdvertising(advData);
         }
@@ -150,6 +151,11 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     public void setAdvertisingInterval(int advInterval) {
         this.advertisingInterval = advInterval;
         Log.i(INFO_TAG, "WE SET THE ADVERTISING INTERVAL");
+    }
+
+    public void setGattComm (int gattComm) {
+        Log.i(INFO_TAG, "Gatt comm type is " + String.valueOf(gattComm));
+        this.gattComm = gattComm;
     }
 
     public void connect(BluetoothDevice device) {
@@ -280,9 +286,9 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
     }
 
 
-    public void startLeAdvertisingSet(byte [] extraData) {
+    /*public void startLeAdvertisingSet(byte [] extraData) {
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.N) {
-           /* mAdvSetCallback = new AdvertisingSetCallback() {
+            mAdvSetCallback = new AdvertisingSetCallback() {
                 @Override
                 public void onAdvertisingSetStarted(AdvertisingSet advertisingSet, int txPower, int status) {
                     Log.i(INFO_TAG, "onAdvertisingSetStarted(): txPower:" + txPower + " , status: "
@@ -304,7 +310,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
                 public void onAdvertisingSetStopped(AdvertisingSet advertisingSet) {
                     Log.i(INFO_TAG, "onAdvertisingSetStopped():");
                 }
-            };*/
+            };
         }
 
 
@@ -314,7 +320,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         AdvertisingSetParameters parameters = (new AdvertisingSetParameters.Builder())
                 .setLegacyMode(true) // True by default, but set here as a reminder.
                 .setConnectable(mConnectable)
-                .setInterval(this.advertisingInterval)
+                .setInterval(100)
                 .setTxPowerLevel(AdvertisingSetParameters.TX_POWER_HIGH)
                 .build();
 
@@ -328,7 +334,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
 //        mBluetoothLeAdvertiser.startAdvertisingSet(parameters, data,
 //                null, null, null, mAdvSetCallback);
-    }
+    }*/
 
     public void startLeAdvertising(byte [] extraData){
 
