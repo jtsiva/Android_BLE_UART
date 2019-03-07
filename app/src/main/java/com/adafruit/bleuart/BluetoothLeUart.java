@@ -15,6 +15,8 @@ import android.bluetooth.le.ScanSettings;
 import android.os.ParcelUuid;
 import android.content.Context;
 
+import android.os.SystemClock;
+
 import java.io.IOException;
 import java.io.FileNotFoundException;
 import java.io.File;
@@ -34,6 +36,8 @@ import java.util.HashMap;
 import java.lang.String;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.Objects;
+
+import java.util.Random;
 
 import android.util.Log;
 
@@ -97,7 +101,68 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
     private int connInterval;
     private int mtu;
 
-    File mOutFile = null;
+
+
+    private File mOutFile = null;
+    private File mGattOutFile = null;
+
+    private Thread bgThread = null;
+
+    private class SaveToFileRunnable implements Runnable {
+
+        private File file = null;
+        private byte [] buffer;
+        private boolean append;
+        public SaveToFileRunnable (File outFile, byte [] data, boolean append) {
+            this.file = outFile;
+            this.buffer = data.clone();
+            this.append = append;
+        }
+
+        public void run(){
+            FileOutputStream stream = null;
+            if (null != file) {
+                try {
+                    stream = new FileOutputStream(file, append);
+                    stream.write(buffer);
+                    stream.close();
+                } catch(IOException e) {
+                }
+            }
+        }
+    }
+
+    private long gattLastTS = 0;
+    private String [] gattBatch = new String [1000];
+    private int gattBatchIndex = 0;
+
+    private void recordTimeStamp(File file) {
+        long ts = SystemClock.elapsedRealtimeNanos ();
+        long diff = 0;
+
+        if (0 == gattLastTS) {
+            gattLastTS = ts;
+
+            bgThread = new Thread(new SaveToFileRunnable(file, "inter-packet_time\n".getBytes(), false));
+            bgThread.start();
+
+        } else {
+            diff = ts - gattLastTS;
+            gattLastTS = ts;
+
+            gattBatch[gattBatchIndex] = String.valueOf(diff);
+            gattBatchIndex++;
+
+            if (100 == gattBatchIndex) {
+                String out = String.join("\n", gattBatch);
+                bgThread = new Thread(new SaveToFileRunnable(file, out.getBytes(), true));
+                bgThread.start();
+                gattBatchIndex = 0;
+            }
+        }
+
+    }
+
 
     public class WriteData {
         public BluetoothGatt gatt;
@@ -168,12 +233,15 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
 
     // Send data to connected UART device.
 
+
     public void doWrite (WriteData writeData) {
         Log.i("BlueNet", "writing " + new String(writeData.data));
         BluetoothGattService service = writeData.gatt.getService(UART_UUID);
         BluetoothGattCharacteristic characteristic = service.getCharacteristic(TX_UUID);
         characteristic.setValue(writeData.data);
         idle = false;
+
+        recordTimeStamp(mGattOutFile);
 
         writeData.gatt.writeCharacteristic(characteristic);
     }
@@ -309,9 +377,10 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
         }
     };
 
+
     private long advCount = 0;
-    private long tsDiffInter = 0;
-    private long tsDiffTotal = 0;
+    private String [] batch = new String [100];
+    private int batchIndex = 0;
     private long lastTS = 0;
     private void handleResult(ScanResult result) {
         FileOutputStream stream = null;
@@ -323,32 +392,21 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
             advCount += 1;
             if (0 == lastTS) {
                 lastTS = ts;
-                if (null != mOutFile) {
-                    try {
-                        stream = new FileOutputStream(mOutFile, false);
-                        stream.write("window avg    overall\n".getBytes());
-                        stream.close();
-                    } catch(IOException e) {
-                    }
-                }
+                bgThread = new Thread(new SaveToFileRunnable(mOutFile, "inter-packet_time\n".getBytes(), false));
+                bgThread.start();
+
             } else {
                 diff = ts - lastTS;
                 lastTS = ts;
-                tsDiffInter += diff;
-                tsDiffTotal += diff;
 
-                if (0 == advCount % 100) {
-                    Log.i("AdvInfo", "window avg: " + String.valueOf(tsDiffInter/100) + "     overall: " + String.valueOf(tsDiffTotal/advCount));
-                    if (null != mOutFile) {
+                batch[batchIndex] = String.valueOf(diff);
+                batchIndex++;
 
-                        try {
-                            stream = new FileOutputStream(mOutFile, true);
-                            stream.write((String.valueOf(tsDiffInter/100) + "\t" + String.valueOf(tsDiffTotal/advCount) + "\t" + String.valueOf(advCount) + "\n").getBytes());
-                            stream.close();
-                        } catch (IOException e) {
-                        }
-                    }
-                    tsDiffInter = 0;
+                if (100 == batchIndex) {
+                    String out = String.join("\n", batch);
+                    bgThread = new Thread(new SaveToFileRunnable(mOutFile, out.getBytes(), true));
+                    bgThread.start();
+                    batchIndex = 0;
                 }
             }
         }
@@ -422,12 +480,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 mConnectedDevices.put(gatt.getDevice().getAddress(), gatt);
 
-                // Connected to device, start discovering services.
-                if (!gatt.discoverServices()) {
-                    // Error starting service discovery.
-                    Log.e("", "error discovering services!");
-                    connectFailure();
-                }
+                gatt.requestMtu(this.mtu);
             }
             else {
                 // Error connecting to device.
@@ -466,55 +519,62 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
         }
         BluetoothGattCharacteristic rx = bluetoothGatt.getService(UART_UUID).getCharacteristic(RX_UUID);
 
-        // Save reference to each DIS characteristic.
-        if (null != gatt.getService(DIS_UUID)) {
-            disManuf = gatt.getService(DIS_UUID).getCharacteristic(DIS_MANUF_UUID);
-            disModel = gatt.getService(DIS_UUID).getCharacteristic(DIS_MODEL_UUID);
-            disHWRev = gatt.getService(DIS_UUID).getCharacteristic(DIS_HWREV_UUID);
-            disSWRev = gatt.getService(DIS_UUID).getCharacteristic(DIS_SWREV_UUID);
+        byte [] b = new byte[512];
+        new Random().nextBytes(b);
 
-            // Add device information characteristics to the read queue
-            // These need to be queued because we have to wait for the response to the first
-            // read request before a second one can be processed (which makes you wonder why they
-            // implemented this with async logic to begin with???)
-            readQueue.offer(disManuf);
-            readQueue.offer(disModel);
-            readQueue.offer(disHWRev);
-            readQueue.offer(disSWRev);
+        if (this.gattComm == ArgumentSplash.GATT_WRITE_REQUEST) {
 
-            // Request a dummy read to get the device information queue going
-            gatt.readCharacteristic(disModel);
-        } else {
-            Log.w("Central", "null service!");
+            for (Map.Entry<String, BluetoothGatt> entry : mConnectedDevices.entrySet()) {
+                BluetoothGattService service = entry.getValue().getService(UART_UUID);
+                BluetoothGattCharacteristic characteristic = service.getCharacteristic(TX_UUID);
+                characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+
+                //write
+                send(b);
+            }
+        } else if (this.gattComm == ArgumentSplash.GATT_WRITE_COMMAND) {
+            for (Map.Entry<String, BluetoothGatt> entry : mConnectedDevices.entrySet()) {
+                BluetoothGattService service = entry.getValue().getService(UART_UUID);
+                BluetoothGattCharacteristic characteristic = service.getCharacteristic(TX_UUID);
+                characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+
+                //write
+                send(b);
+            }
+        } else if (this.gattComm == ArgumentSplash.GATT_READ) {
+            for (Map.Entry<String, BluetoothGatt> entry : mConnectedDevices.entrySet()) {
+                BluetoothGattService service = entry.getValue().getService(UART_UUID);
+                BluetoothGattCharacteristic characteristic = service.getCharacteristic(RX_UUID);
+
+                //read
+                entry.getValue().readCharacteristic(characteristic);
+            }
+        } else if (this.gattComm == ArgumentSplash.GATT_NOTIFY) {
+            // Setup notifications on RX characteristic changes (i.e. data received).
+            // First call setCharacteristicNotification to enable notification.
+            if (!bluetoothGatt.setCharacteristicNotification(rx, true)) {
+                // Stop if the characteristic notification setup failed.
+                connectFailure();
+                Log.e("", "onServicesDiscovered notification setup failed");
+                return;
+            }
+            // Next update the RX characteristic's client descriptor to enable notifications.
+            BluetoothGattDescriptor desc = rx.getDescriptor(CLIENT_UUID);
+            if (desc == null) {
+                // Stop if the RX characteristic has no client descriptor.
+                connectFailure();
+                Log.e("", "onServicesDiscovered no client descriptor");
+                return;
+            }
+            desc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+            if (!bluetoothGatt.writeDescriptor(desc)) {
+                // Stop if the client descriptor could not be written.
+                connectFailure();
+                Log.e("", "onServicesDiscovered descriptor could not be written");
+                return;
+            }
+            // Notify of connection completion.
         }
-
-
-
-        // Setup notifications on RX characteristic changes (i.e. data received).
-        // First call setCharacteristicNotification to enable notification.
-        if (!bluetoothGatt.setCharacteristicNotification(rx, true)) {
-            // Stop if the characteristic notification setup failed.
-            connectFailure();
-            Log.e("", "onServicesDiscovered notification setup failed");
-            return;
-        }
-        // Next update the RX characteristic's client descriptor to enable notifications.
-        BluetoothGattDescriptor desc = rx.getDescriptor(CLIENT_UUID);
-        if (desc == null) {
-            // Stop if the RX characteristic has no client descriptor.
-            connectFailure();
-            Log.e("", "onServicesDiscovered no client descriptor");
-            return;
-        }
-        desc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-        if (!bluetoothGatt.writeDescriptor(desc)) {
-            // Stop if the client descriptor could not be written.
-            connectFailure();
-            Log.e("", "onServicesDiscovered descriptor could not be written");
-            return;
-        }
-        // Notify of connection completion.
-
     }
 
     @Override
@@ -522,12 +582,6 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
                                   BluetoothGattDescriptor descriptor, int status) {
         if (status == BluetoothGatt.GATT_SUCCESS) {
             Log.w("Central", "Descriptor written!");
-
-            BluetoothDevice device = gatt.getDevice();
-            String address = device.getAddress();
-            final BluetoothGatt bluetoothGatt = mConnectedDevices.get(address);
-
-            bluetoothGatt.requestMtu(this.mtu);
 
             notifyOnConnected(this);
         } else {
@@ -545,6 +599,15 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
         BluetoothDevice device = gatt.getDevice();
         String address = device.getAddress();
         final BluetoothGatt bluetoothGatt = mConnectedDevices.get(address);
+
+        // Connected to device, mtu set, start discovering services.
+        if (!bluetoothGatt.discoverServices()) {
+            // Error starting service discovery.
+            Log.e("", "error discovering services!");
+            connectFailure();
+        }
+
+
         bluetoothGatt.requestConnectionPriority(this.connInterval);
 
     }
@@ -553,6 +616,9 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
     @Override
     public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
         super.onCharacteristicChanged(gatt, characteristic);
+
+        recordTimeStamp(mGattOutFile);
+
         notifyOnReceive(this, characteristic);
     }
 
@@ -565,18 +631,10 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
         final BluetoothGatt bluetoothGatt = mConnectedDevices.get(address);
 
         if (status == BluetoothGatt.GATT_SUCCESS) {
-            //Log.w("DIS", characteristic.getStringValue(0));
-            // Check if there is anything left in the queue
-            BluetoothGattCharacteristic nextRequest = readQueue.poll();
-            if(nextRequest != null){
-                // Send a read request for the next item in the queue
-                bluetoothGatt.readCharacteristic(nextRequest);
-            }
-            else {
-                // We've reached the end of the queue
-                disAvailable = true;
-                notifyOnDeviceInfoAvailable();
-            }
+            recordTimeStamp(mGattOutFile);
+
+            //read again
+            bluetoothGatt.readCharacteristic(characteristic);
         }
         else {
             Log.w("DIS", "Failed reading characteristic " + characteristic.getUuid().toString());
@@ -595,13 +653,19 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
             Log.d("BlueNet","Characteristic write FAILED");
         }
 
-        WriteData writeData = writeQueue.poll();
+        //For testing purposes
+        byte [] b = new byte[512];
+        new Random().nextBytes(b);
+        send(b);
 
-        if (null == writeData) { //empty!
-            idle = true;
-        } else {
-            doWrite(writeData);
-        }
+        //MORE REALISTIC
+//        WriteData writeData = writeQueue.poll();
+//
+//        if (null == writeData) { //empty!
+//            idle = true;
+//        } else {
+//            doWrite(writeData);
+//        }
 
     }
 
@@ -618,6 +682,8 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
     public void setGattComm (int gattComm) {
         Log.i("bleuart", "Gatt comm type is " + String.valueOf(gattComm));
         this.gattComm = gattComm;
+        File path = context.getExternalFilesDir(null);
+        mGattOutFile = new File(path, "gatt_cap.txt");
     }
 
     // Private functions to simplify the notification of all callbacks of a certain event.
