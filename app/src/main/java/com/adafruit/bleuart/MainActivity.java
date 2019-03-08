@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.text.method.ScrollingMovementMethod;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -21,6 +22,9 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
     private EditText input;
     private Button   send;
     private CheckBox newline;
+
+    PowerManager powerManager;
+    PowerManager.WakeLock wakeLock;
 
     // Bluetooth LE UART instance.  This is defined in BluetoothLeUart.java.
     private DualRoleBluetoothLeUart uart;
@@ -81,6 +85,11 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
+                "AndroidBLEUART::MyWakelockTag");
+        wakeLock.acquire();
+
         // Grab references to UI elements.
         messages = (TextView) findViewById(R.id.messages);
         input = (EditText) findViewById(R.id.input);
@@ -136,6 +145,7 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
         uart.stop();
         //uart.unregisterCallback(this);
         uart.disconnect();
+        wakeLock.release();
     }
 
     @Override
