@@ -117,20 +117,33 @@ public class MainActivity extends Activity implements UartBase.HostCallback {
         return true;
     }
 
+    boolean mStarted = false;
     // OnResume, called right before UI is displayed.  Connect to the bluetooth device.
     @Override
     protected void onResume() {
         super.onResume();
         uart.registerCallback(this);
-        uart.start();
+        if (!mStarted) {
+            uart.start();
+        }
     }
 
     // OnStop, called right before the activity loses foreground focus.  Close the BTLE connection.
     @Override
     protected void onStop() {
         super.onStop();
-        uart.unregisterCallback(this);
+
+        uart.stop();
+        //uart.unregisterCallback(this);
         uart.disconnect();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+//        uart.stop();
+//        uart.disconnect();
     }
 
     @Override

@@ -15,6 +15,7 @@ import android.bluetooth.le.ScanSettings;
 import android.os.ParcelUuid;
 import android.content.Context;
 
+import android.text.TextUtils;
 import android.os.SystemClock;
 
 import java.io.IOException;
@@ -133,7 +134,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
     }
 
     private long gattLastTS = 0;
-    private String [] gattBatch = new String [1000];
+    private String [] gattBatch = new String [100];
     private int gattBatchIndex = 0;
 
     private void recordTimeStamp(File file) {
@@ -154,7 +155,9 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
             gattBatchIndex++;
 
             if (100 == gattBatchIndex) {
-                String out = String.join("\n", gattBatch);
+                String out = TextUtils.join("\n", gattBatch);
+                out += "\n";
+                //Log.i("bleuart", out);
                 bgThread = new Thread(new SaveToFileRunnable(file, out.getBytes(), true));
                 bgThread.start();
                 gattBatchIndex = 0;
@@ -319,6 +322,32 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
 
     public void stop() {
         stopLeScan();
+        if (batchIndex > 0) {
+            Log.w("bleuart", "saving off partial batch");
+            String [] tmp = new String[batchIndex];
+            System.arraycopy(batch, 0, tmp, 0, batchIndex);
+            String out = TextUtils.join("\n", tmp);
+            //Log.i("bleuart", out);
+            bgThread = new Thread(new SaveToFileRunnable(mOutFile, out.getBytes(), true));
+            bgThread.start();
+            try {
+                bgThread.join();
+            }catch (InterruptedException ex) {
+                //nothing--move along
+            }
+
+        }else if (gattBatchIndex > 0) {
+            String [] tmp = new String[gattBatchIndex];
+            System.arraycopy(gattBatch, 0, tmp, 0, gattBatchIndex);
+            String out = TextUtils.join("\n", tmp);
+            bgThread = new Thread(new SaveToFileRunnable(mGattOutFile, out.getBytes(), true));
+            bgThread.start();
+            try {
+                bgThread.join();
+            }catch (InterruptedException ex) {
+                //nothing--move along
+            }
+        }
     }
 
     public int getMtu() {
@@ -392,18 +421,18 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
             advCount += 1;
             if (0 == lastTS) {
                 lastTS = ts;
-                bgThread = new Thread(new SaveToFileRunnable(mOutFile, "inter-packet_time\n".getBytes(), false));
+                bgThread = new Thread(new SaveToFileRunnable(mOutFile, "packet_arrival_time\n".getBytes(), false));
                 bgThread.start();
 
             } else {
-                diff = ts - lastTS;
-                lastTS = ts;
-
-                batch[batchIndex] = String.valueOf(diff);
+                //
+                batch[batchIndex] = String.valueOf(ts);
                 batchIndex++;
 
                 if (100 == batchIndex) {
-                    String out = String.join("\n", batch);
+                    String out = TextUtils.join("\n", batch);
+                    out += "\n";
+                    //Log.i("bleuart", out);
                     bgThread = new Thread(new SaveToFileRunnable(mOutFile, out.getBytes(), true));
                     bgThread.start();
                     batchIndex = 0;
@@ -671,6 +700,7 @@ public class BluetoothLeUart extends BluetoothGattCallback implements UartBase {
 
     private int mLoggingOpt = 0;
     public void setAdvLogging(int opt) {
+        Log.i("bleuart", "logging set to " + String.valueOf(opt));
         mLoggingOpt = opt;
 
         File path = context.getExternalFilesDir(null);

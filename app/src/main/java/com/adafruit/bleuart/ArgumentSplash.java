@@ -95,7 +95,6 @@ public class ArgumentSplash extends Activity {
         boolean isMtu = cliArgs.switchPresent("--mtu");
         boolean isGattCommType = cliArgs.switchPresent("--gatt-comm");
 
-        double logAdvTimeDouble = 0;
         double advIntervalDouble = 0;
         double scanSettingDouble = 0;
         double connIntervalDouble = 0;
@@ -111,8 +110,7 @@ public class ArgumentSplash extends Activity {
             role = PERIPHERAL;
 
         if (isLogAdvTime) {
-            logAdvTimeDouble = cliArgs.switchDoubleValue("--log-adv-t");
-            logAdvTime = (int) logAdvTimeDouble;
+           logAdvTime = 1;
         }
 
         if (isAdvInterval) {

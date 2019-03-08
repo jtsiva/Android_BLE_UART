@@ -45,6 +45,7 @@ import android.os.Message;
 import android.support.annotation.MainThread;
 
 import android.os.SystemClock;
+import android.text.TextUtils;
 
 import android.os.Build;
 import android.util.Log;
@@ -269,7 +270,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
             gattBatchIndex++;
 
             if (100 == gattBatchIndex) {
-                String out = String.join("\n", gattBatch);
+                String out = TextUtils.join("\n", gattBatch);
                 bgThread = new Thread(new SaveToFileRunnable(file, out.getBytes(), true));
                 bgThread.start();
                 gattBatchIndex = 0;
