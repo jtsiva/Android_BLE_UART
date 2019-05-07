@@ -20,10 +20,14 @@ import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.content.Context;
 import android.os.ParcelUuid;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.util.HashSet;
+import java.util.Random;
 import java.util.Set;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,6 +43,9 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.support.annotation.MainThread;
+
+import android.os.SystemClock;
+import android.text.TextUtils;
 
 import android.os.Build;
 import android.util.Log;
@@ -105,6 +112,35 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
     private int advertisingInterval;
     private int gattComm;
+
+    private File mGattOutFile = null;
+
+    private Thread bgThread = null;
+
+    private class SaveToFileRunnable implements Runnable {
+
+        private File file = null;
+        private byte [] buffer;
+        private boolean append;
+        public SaveToFileRunnable (File outFile, byte [] data, boolean append) {
+            this.file = outFile;
+            this.buffer = data.clone();
+            this.append = append;
+        }
+
+        public void run(){
+            FileOutputStream stream = null;
+            if (null != file) {
+                try {
+                    stream = new FileOutputStream(file, append);
+                    stream.write(buffer);
+                    stream.close();
+                } catch(IOException e) {
+                }
+            }
+        }
+    }
+
 
     public class WriteData {
         public BluetoothDevice device;
@@ -180,7 +216,7 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
     public void stop(){
 
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.N) {
+        if (false/*Build.VERSION.SDK_INT > Build.VERSION_CODES.N*/) {
            // mBluetoothLeAdvertiser.stopAdvertisingSet(mAdvSetCallback);
         } else {
             mBluetoothLeAdvertiser.stopAdvertising(mAdvertiseCallback);
@@ -212,7 +248,42 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         return mMtu;
     }
 
+    private long gattLastTS = 0;
+    private String [] gattBatch = new String [1000];
+    private int gattBatchIndex = 0;
+
+    private void recordTimeStamp(File file) {
+        long ts = SystemClock.elapsedRealtimeNanos();
+        long diff = 0;
+
+        if (0 == gattLastTS) {
+            gattLastTS = ts;
+
+            bgThread = new Thread(new SaveToFileRunnable(file, "inter-packet_time\n".getBytes(), false));
+            bgThread.start();
+
+        } else {
+            diff = ts - gattLastTS;
+            gattLastTS = ts;
+
+            gattBatch[gattBatchIndex] = String.valueOf(diff);
+            gattBatchIndex++;
+
+            if (100 == gattBatchIndex) {
+                String out = TextUtils.join("\n", gattBatch);
+                bgThread = new Thread(new SaveToFileRunnable(file, out.getBytes(), true));
+                bgThread.start();
+                gattBatchIndex = 0;
+            }
+        }
+
+    }
+
+
     public void doNotify (WriteData writeData) {
+
+        recordTimeStamp(mGattOutFile);
+
         BluetoothGattCharacteristic characteristic = mGattServer
                 .getService(UART_UUID)
                 .getCharacteristic(RX_UUID);
@@ -281,6 +352,15 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
 
         service.addCharacteristic(txChar);
         service.addCharacteristic(rxChar);
+
+        byte [] b = new byte[512];
+        new Random().nextBytes(b);
+
+        if (this.gattComm == ArgumentSplash.GATT_READ) {
+            rxChar.setValue(b);
+        } else if (this.gattComm == ArgumentSplash.GATT_NOTIFY) {
+            //send after descriptor is written
+        }
 
         return service;
     }
@@ -399,34 +479,15 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
                 responseNeeded, offset, value);
         boolean found = false;
         //Log.i("Peripheral", "onCharacteristicWriteRequest " + characteristic.getUuid().toString());
-        Log.i("Peripheral", new String(value));
-        String data = new String(value);
-        if (data.matches("<.*>")) { //we have a neighbor address update
-            data = data.replaceFirst("<", "");
-            data = data.replaceFirst(">", "");
+        //Log.i("Peripheral", new String(value));
 
-            String [] addresses = data.split("\\s");
-            BluetoothDevice temp = device;
+        recordTimeStamp(mGattOutFile);
 
-            for (int i = 0; i < addresses.length && !found; i++) {
-                //see if we are already connected to that device and ignore if found
-                for (BluetoothDevice dev : mRegisteredDevices) {
-                    if (Objects.equals(addresses[i], dev.getAddress()) && !found) {
-                        found = true;
-                    }
-                }
-            }
-            //we were sent an address of someone we don't know! Go tell someone!
-            if (!found) {
-                Log.i("Peripheral", "Found someone new!");
-                notifyOnDeviceFound(device); //pass a random device since it'll be ignored anyway
-            }
-        } else {
-            //handle long writes?
-            //handle different receive queues
-            characteristic.setValue(value);
-            notifyOnReceive(this, characteristic);
-        }
+        //handle long writes?
+        //handle different receive queues
+        characteristic.setValue(value);
+        //notifyOnReceive(this, characteristic);
+
 
         if (responseNeeded) {
             mGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
@@ -441,8 +502,27 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
                                             int requestId, int offset,
                                             BluetoothGattCharacteristic characteristic) {
 
-//        ReadRequest readReq = new ReadRequest(device, requestId, offset, characteristic);
-//        bleHandler.obtainMessage(MSG_READ, readReq).sendToTarget();
+        recordTimeStamp(mGattOutFile);
+
+        int length = characteristic.getValue().length;
+        if (offset > length) {
+            Log.i("BlueNet", "sending read response end");
+            mGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, new byte[]{0});
+            return;
+        }
+
+        int size = length - offset;
+        byte[] response = new byte[size];
+
+        for (int i = offset; i < length; i++) {
+            response[i - offset] = characteristic.getValue()[i];
+        }
+
+        if (RX_UUID.equals(characteristic.getUuid())) {
+            //Log.i("BlueNet", String.format("sending read response of length %d of payload of length %d", size, mCurrentMsg.length));
+            mGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, response);
+            return;
+        }
     }
 
     //clients will try to write to the descriptor to enable notifications.
@@ -463,6 +543,10 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
             if (responseNeeded) {
                 mGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
             }
+
+            byte [] b = new byte[512];
+            new Random().nextBytes(b);
+            send(b);
         } else {
             Log.w(INFO_TAG, "Unknown descriptor write request");
             if (responseNeeded) {
@@ -477,13 +561,19 @@ class BluetoothLeUartServer extends BluetoothGattServerCallback implements UartB
         super.onNotificationSent(device, status);
         if (status == BluetoothGatt.GATT_SUCCESS) {
 
-            WriteData writeData = writeQueue.poll();
+            //FOR TESTING
+            byte [] b = new byte[512];
+            new Random().nextBytes(b);
+            send(b);
 
-            if (null == writeData) { //empty!
-                idle = true;
-            } else {
-                doNotify(writeData);
-            }
+            //REALISTIC
+//            WriteData writeData = writeQueue.poll();
+//
+//            if (null == writeData) { //empty!
+//                idle = true;
+//            } else {
+//                doNotify(writeData);
+//            }
 
             //bleHandler.obtainMessage(MSG_NOTIFIED, device).sendToTarget();
             Log.d("BlueNet", "Notification sent");

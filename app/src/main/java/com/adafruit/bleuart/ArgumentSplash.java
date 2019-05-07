@@ -17,7 +17,7 @@ import java.lang.reflect.Array;
 import java.util.*;
 import java.lang.reflect.Field;
 
-public class ArgumentSplash extends Activity {
+public class ArgumentSplash extends Activity implements BluetoothRestarter.RestartListener {
 
     final static int CENTRAL = 0;
     final static int PERIPHERAL = 1;
@@ -31,12 +31,35 @@ public class ArgumentSplash extends Activity {
 
     final static int CONNECTABLE = 1;
 
+    BluetoothRestarter btRestarter = null;
+
+    private boolean buttonClicked = false;
+    private boolean btRestarted = false;
+    private Intent i = null;
+
+    public void onRestartComplete()
+    {
+        Log.i("bleuart", "Restarted Bluetooth!");
+        btRestarted = true;
+        if (buttonClicked) {
+            this.go();
+        }
+    }
+
+    void go(){
+        startActivity(i);
+        finish();
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_argument_splash);
 
+        btRestarter = new BluetoothRestarter(this);
+
         checkPermissions();
+
     }
 
     private static boolean hasPermissions(Context context, String... permissions) {
@@ -62,7 +85,7 @@ public class ArgumentSplash extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-
+        btRestarter.restart(this);
     }
 
     @Override
@@ -95,7 +118,6 @@ public class ArgumentSplash extends Activity {
         boolean isMtu = cliArgs.switchPresent("--mtu");
         boolean isGattCommType = cliArgs.switchPresent("--gatt-comm");
 
-        double logAdvTimeDouble = 0;
         double advIntervalDouble = 0;
         double scanSettingDouble = 0;
         double connIntervalDouble = 0;
@@ -111,8 +133,7 @@ public class ArgumentSplash extends Activity {
             role = PERIPHERAL;
 
         if (isLogAdvTime) {
-            logAdvTimeDouble = cliArgs.switchDoubleValue("--log-adv-t");
-            logAdvTime = (int) logAdvTimeDouble;
+           logAdvTime = 1;
         }
 
         if (isAdvInterval) {
@@ -165,10 +186,12 @@ public class ArgumentSplash extends Activity {
         sendBundle.putInt("gattComm", gattComm);
 
 
-        Intent i = new Intent(ArgumentSplash.this, MainActivity.class);
+        i = new Intent(ArgumentSplash.this, MainActivity.class);
         i.putExtras(sendBundle);
-        startActivity(i);
+        buttonClicked = true;
 
-        finish();
+        if (btRestarted) {
+            this.go();
+        }
     }
 }
